@@ -3273,8 +3273,7 @@
       border-radius: 12px;
       background: rgba(4, 18, 29, .54);
       padding: 11px;
-    
-      cursor: pointer;}
+    }
 
     .registration-item-icon {
       width: 42px;
@@ -6015,6 +6014,11 @@
         max-height: 98px !important;
       }
     }
+
+    .inline-spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.45); border-top-color: #fff; border-radius: 50%; display:inline-block; margin-right:8px; vertical-align:-2px; animation: project-spin .75s linear infinite; }
+    @keyframes project-spin { to { transform: rotate(360deg); } }
+    .registration-item { transition: border-color .18s ease, background .18s ease, transform .18s ease; }
+    .registration-item:hover { border-color: rgba(0,150,190,.36); background: rgba(255,255,255,.58); transform: translateY(-1px); }
 </style>
 
   <style>
@@ -8343,15 +8347,6 @@
       });
     }
 
-    function normalizeProjectId(value) {
-      return String(value ?? "").trim();
-    }
-
-    function findProjectById(projectId) {
-      const normalizedId = normalizeProjectId(projectId);
-      return projects.find(item => normalizeProjectId(item.id) === normalizedId);
-    }
-
     function renderProjects() {
       syncAllProjectDeadlines();
       const filtered = getFilteredProjects();
@@ -8662,29 +8657,18 @@
         </div>
       `).join("");
 
-      list.querySelectorAll(".registration-item").forEach(item => {
-        const editButton = item.querySelector(".registration-edit-btn");
-        const projectId = editButton?.dataset.editId;
-        item.setAttribute("role", "button");
-        item.setAttribute("tabindex", "0");
-        item.title = "Clique para abrir o projeto";
-        const open = event => {
-          if (event?.target?.closest?.(".registration-edit-btn")) return;
-          openUpdateModal(projectId);
-        };
-        item.addEventListener("click", open);
-        item.addEventListener("keydown", event => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            open(event);
-          }
-        });
-      });
-
       list.querySelectorAll(".registration-edit-btn").forEach(button => {
         button.addEventListener("click", event => {
           event.stopPropagation();
           openProjectEdit(button.dataset.editId);
+        });
+      });
+      list.querySelectorAll(".registration-item").forEach(item => {
+        item.style.cursor = "pointer";
+        item.addEventListener("click", event => {
+          if (event.target.closest("button, a")) return;
+          const editButton = item.querySelector("[data-edit-id]");
+          if (editButton) openProjectEdit(editButton.dataset.editId);
         });
       });
     }
@@ -8836,7 +8820,7 @@
     }
 
     function transferProjectOwnership(projectId, newOwner) {
-      const project = findProjectById(projectId);
+      const project = projects.find(item => String(item.id) === String(projectId));
       if (!project || !userCanManageStructure(project)) return;
 
       const previousOwner = project.owner;
@@ -8868,7 +8852,7 @@
     }
 
     function removeProjectMember(projectId, memberName) {
-      const project = findProjectById(projectId);
+      const project = projects.find(item => String(item.id) === String(projectId));
       if (!project || !userCanManageStructure(project)) return;
 
       project.members = (project.members || []).filter(name => name !== memberName);
@@ -9057,10 +9041,10 @@
     }
 
     function openUpdateModal(projectId) {
-      const project = findProjectById(projectId);
+      const project = projects.find(item => String(item.id) === String(projectId));
       if (!project) return;
 
-      activeProjectId = normalizeProjectId(project.id);
+      activeProjectId = projectId;
       document.getElementById("updateProjectName").textContent = project.name;
       document.getElementById("updateProjectMeta").textContent =
         `${project.area} · Responsável principal: ${project.owner}`;
@@ -9083,7 +9067,7 @@
     }
 
     function requestProjectAccess(projectId) {
-      const project = findProjectById(projectId);
+      const project = projects.find(item => String(item.id) === String(projectId));
       if (!project || userCanEdit(project) || getPendingRequest(project)) return;
 
       project.joinRequests = Array.isArray(project.joinRequests) ? project.joinRequests : [];
@@ -9109,7 +9093,7 @@
     }
 
     function decideJoinRequest(projectId, requestId, action) {
-      const project = findProjectById(projectId);
+      const project = projects.find(item => String(item.id) === String(projectId));
       if (!project || !isProjectOwner(project)) return;
 
       const request = (project.joinRequests || []).find(item => String(item.id) === String(requestId));
@@ -9143,7 +9127,7 @@
     }
 
     function openHistoryModal(projectId) {
-      const project = findProjectById(projectId);
+      const project = projects.find(item => String(item.id) === String(projectId));
       if (!project) return;
 
       markProjectUpdatesAsRead(project);
@@ -9269,7 +9253,7 @@
       updateProgressValue.textContent = `${progress}%`;
       const statusControl = document.getElementById("updateStatus");
       if (progress === 100) statusControl.value = "Concluído";
-      const project = findProjectById(activeProjectId);
+      const project = projects.find(item => String(item.id) === String(activeProjectId));
       if (project) updateReasonRequirement(project);
     });
 
@@ -9278,7 +9262,7 @@
         updateProgressInput.value = "100";
         updateProgressValue.textContent = "100%";
       }
-      const project = findProjectById(activeProjectId);
+      const project = projects.find(item => String(item.id) === String(activeProjectId));
       if (project) updateReasonRequirement(project);
     });
 
@@ -9297,12 +9281,12 @@
     });
 
     document.getElementById("structuralEnd").addEventListener("change", () => {
-      const project = findProjectById(activeProjectId);
+      const project = projects.find(item => String(item.id) === String(activeProjectId));
       if (project) updateReasonRequirement(project);
     });
 
     document.getElementById("saveUpdate").addEventListener("click", async () => {
-      const project = findProjectById(activeProjectId);
+      const project = projects.find(item => String(item.id) === String(activeProjectId));
       if (!project) return;
 
       if (!userCanEdit(project)) {
@@ -9891,7 +9875,6 @@
       if (!panel || !backdrop) return;
 
       if (mode === "new") clearForm();
-      warmBackend();
       panel.classList.add("open");
       backdrop.classList.add("open");
       backdrop.setAttribute("aria-hidden", "false");
@@ -9947,10 +9930,10 @@
     }
 
     function openProjectEdit(projectId) {
-      const project = findProjectById(projectId);
+      const project = projects.find(item => String(item.id) === String(projectId));
       if (!project) return;
 
-      editingProjectId = normalizeProjectId(project.id);
+      editingProjectId = project.id;
       document.getElementById("projectName").value = project.name || "";
       document.getElementById("projectArea").value = project.area || "Telemetria";
       document.getElementById("projectOwner").value = project.owner || currentUser.name;
@@ -10030,8 +10013,37 @@
     document.getElementById("registrationModalBackdrop").addEventListener("click", closeRegistrationModal);
     document.getElementById("clearProjectForm").addEventListener("click", clearForm);
 
+    function setProjectSaveState(saving, label = "Salvando...") {
+      const button = document.getElementById("saveProject");
+      const clearButton = document.getElementById("clearProjectForm");
+      if (!button) return;
+      button.disabled = saving;
+      if (clearButton) clearButton.disabled = saving;
+      button.dataset.saving = saving ? "true" : "false";
+      if (saving) button.innerHTML = `<span class="inline-spinner" aria-hidden="true"></span>${label}`;
+      else updateRegistrationFormMode();
+    }
+
+    function requireActiveSession() {
+      const session = readStoredSession();
+      if (session?.token) return session;
+      localStorage.removeItem(CSC_SESSION_KEY);
+      loginScreen.hidden = false;
+      document.body.classList.add("auth-pending");
+      throw new Error("Sua sessão expirou. Entre novamente.");
+    }
+
+    function syncProjectsInBackground(session) {
+      window.setTimeout(() => {
+        loadBackendProjects(session).catch(error => console.warn("Sincronização em segundo plano falhou:", error));
+      }, 350);
+    }
+
     document.getElementById("saveProject").addEventListener("click", async () => {
+      const saveButton = document.getElementById("saveProject");
+      if (saveButton?.dataset.saving === "true") return;
       if (!currentUserCanCreateProjects()) return showToast("Seu perfil não permite cadastrar projetos.");
+
       const name = document.getElementById("projectName").value.trim();
       const ownerInput = document.getElementById("projectOwner").value.trim();
       const description = document.getElementById("projectDescription").value.trim() || "Projeto cadastrado pelo sistema";
@@ -10039,146 +10051,115 @@
       const start = document.getElementById("projectStart").value;
       const end = document.getElementById("projectEnd").value;
       const status = document.getElementById("projectStatus").value;
-      const progress = Number(progressInput.value);
+      const progress = Number(progressInput.value || 0);
       const selectedArea = document.getElementById("projectArea").value;
 
-      if (!name || !ownerInput || !start || !end) {
-        showToast("Preencha nome, responsável, data de início e data final.");
-        return;
+      if (!name) return showToast("Informe o nome do projeto.");
+      if (!ownerInput) return showToast("Informe o responsável inicial.");
+      if (!start) return showToast("Informe uma data de início válida.");
+      if (!end) return showToast("Informe uma data prevista de conclusão válida.");
+      if (new Date(`${end}T00:00:00`) < new Date(`${start}T00:00:00`)) {
+        return showToast("A data final não pode ser anterior à data de início.");
       }
-
       if (projectLink) {
         try {
           const parsedLink = new URL(projectLink);
-          if (!["http:", "https:"].includes(parsedLink.protocol)) throw new Error("invalid protocol");
-        } catch (error) {
-          showToast("Informe um link válido, começando com http:// ou https://.");
-          return;
+          if (!["http:", "https:"].includes(parsedLink.protocol)) throw new Error();
+        } catch (_) {
+          return showToast("Informe um link válido, começando com http:// ou https://.");
         }
       }
 
-      if (new Date(`${end}T00:00:00`) < new Date(`${start}T00:00:00`)) {
-        showToast("A data final não pode ser anterior à data de início.");
-        return;
-      }
+      let session;
+      try { session = requireActiveSession(); }
+      catch (error) { showToast(error.message); return; }
 
-      if (new Date(end) < new Date(start)) {
-        showToast("A data final não pode ser anterior à data de início.");
-        return;
-      }
-
-      if (editingProjectId !== null) {
-        const project = findProjectById(editingProjectId);
-        if (!project) {
-          showToast("Não foi possível localizar o projeto para edição.");
-          return;
-        }
-
-        project.name = name;
-        project.description = description;
-        project.link = projectLink;
-        project.area = selectedArea;
-        project.owner = ownerInput;
-        project.initials = initialsFromName(ownerInput);
-        project.start = formatDateInput(start);
-        project.end = formatDateInput(end);
-        project.progress = progress;
-        project.status = progress === 100 ? "Concluído" : status;
-        project.orangeIcon = ["Pausado", "Em atraso"].includes(project.status);
-        project.updates = Array.isArray(project.updates) ? project.updates : [];
-        project.updates.unshift({
-          id: Date.now(),
-          dateTime: formatDateTimeNow(),
-          actor: currentUser.name,
-          type: "project_updated",
-          note: `Cadastro do projeto atualizado por ${currentUser.name}.`
-        });
-
-        syncProjectDeadlineStatus(project);
-        try {
-          const session = readStoredSession();
-          if (!session) throw new Error("Sessão expirada.");
-          await apiRequest("updateProject", {
-            projectId: project.id,
-            patch: {
-              nome: project.name,
-              area: project.area,
-              descricao: project.description,
-              dataInicio: project.start,
-              dataFim: project.end,
-              responsavel: project.owner,
-              status: project.status,
-              progresso: project.progress,
-              linkSistema: project.link
-            },
-            justificativa: "Atualização cadastral realizada pelo responsável."
-          }, session.token);
-          await loadBackendProjects(session);
-        } catch (error) {
-          showToast(error.message || "Não foi possível salvar o projeto na planilha.");
-          return;
-        }
-        persistProjects();
-        clearForm();
-        closeRegistrationModal();
-        renderAreaOptions();
-        renderProjects();
-        showToast("Projeto atualizado com sucesso.");
-        return;
-      }
-
-      const owner = currentUser.name;
+      setProjectSaveState(true, editingProjectId !== null ? "Salvando alterações..." : "Cadastrando projeto...");
       try {
-        const session = readStoredSession();
-        if (!session) throw new Error("Sessão expirada. Entre novamente.");
-        const createResult = await apiRequest("createProject", {
-          project: {
+        if (editingProjectId !== null) {
+          const currentProject = projects.find(item => String(item.id) === String(editingProjectId));
+          if (!currentProject) throw new Error("Não foi possível localizar o projeto para edição.");
+
+          const nextStatus = progress === 100 ? "Concluído" : status;
+          const patch = {
             nome: name,
             area: selectedArea,
             descricao: description,
             dataInicio: formatDateInput(start),
             dataFim: formatDateInput(end),
-            responsavel: ownerInput || currentUser.name,
-            status: status || "Em andamento",
-            progresso: Number.isFinite(progress) ? progress : 0,
+            responsavel: ownerInput,
+            status: nextStatus,
+            progresso: progress,
             linkSistema: projectLink
-          }
-        }, session.token, 90000);
+          };
 
-        // Atualização imediata da interface: não bloqueia o cadastro esperando uma segunda leitura completa.
-        const savedProject = createResult.project || createResult.projeto || null;
-        const optimisticProject = mapApiProject(savedProject || {
-          id: `temp-${Date.now()}`,
+          const result = await apiRequest("updateProject", {
+            projectId: currentProject.id,
+            patch,
+            justificativa: "Atualização cadastral realizada pelo responsável."
+          }, session.token, 60000);
+
+          const updatedApiProject = result.project || result.updatedProject;
+          if (updatedApiProject) {
+            const index = projects.findIndex(item => String(item.id) === String(currentProject.id));
+            projects[index] = mapApiProject(updatedApiProject, result.updates || [], result.requests || []);
+          } else {
+            Object.assign(currentProject, {
+              name, area: selectedArea, description, start: formatDateInput(start), end: formatDateInput(end),
+              owner: ownerInput, initials: initialsFromName(ownerInput), status: nextStatus,
+              progress, link: projectLink, orangeIcon: ["Pausado", "Em atraso"].includes(nextStatus)
+            });
+            currentProject.updates = Array.isArray(currentProject.updates) ? currentProject.updates : [];
+            currentProject.updates.unshift({
+              id: `local-${Date.now()}`, dateTime: formatDateTimeNow(), actor: currentUser.name,
+              type: "project_updated", note: `Cadastro do projeto atualizado por ${currentUser.name}.`
+            });
+            syncProjectDeadlineStatus(currentProject);
+          }
+
+          persistProjects();
+          renderAreaOptions();
+          renderProjects();
+          clearForm();
+          closeRegistrationModal();
+          showToast("Projeto atualizado com sucesso.");
+          syncProjectsInBackground(session);
+          return;
+        }
+
+        const payloadProject = {
           nome: name,
           area: selectedArea,
           descricao: description,
           dataInicio: formatDateInput(start),
           dataFim: formatDateInput(end),
-          responsavel: ownerInput || currentUser.name,
-          status: status || "Em andamento",
-          progresso: Number.isFinite(progress) ? progress : 0,
+          responsavel: ownerInput,
+          status: progress === 100 ? "Concluído" : status,
+          progresso: progress,
           linkSistema: projectLink
-        });
-        projects = [optimisticProject, ...projects.filter(item => item.id !== optimisticProject.id)];
+        };
+        const result = await apiRequest("createProject", { project: payloadProject }, session.token, 60000);
+        const apiProject = result.project || result.createdProject || {
+          id: result.projectId || result.id || `pending-${Date.now()}`,
+          ...payloadProject,
+          criadoPor: currentUser.name,
+          participantes: []
+        };
+        const mapped = mapApiProject(apiProject, result.updates || [], result.requests || []);
+        if (!projects.some(item => String(item.id) === String(mapped.id))) projects.unshift(mapped);
         persistProjects();
+        renderAreaOptions();
         renderProjects();
-
-        // Sincroniza a base completa em segundo plano, sem manter o modal travado.
-        window.setTimeout(() => {
-          loadBackendProjects(session)
-            .then(() => { persistProjects(); renderProjects(); })
-            .catch(error => console.warn("Sincronização posterior do projeto:", error));
-        }, 300);
+        clearForm();
+        closeRegistrationModal();
+        showToast("Projeto cadastrado e salvo com sucesso.");
+        syncProjectsInBackground(session);
       } catch (error) {
-        showToast(error.message || "Não foi possível cadastrar o projeto na planilha.");
-        return;
+        console.error("Falha ao salvar projeto:", error);
+        showToast(error.message || "Não foi possível salvar o projeto na planilha.");
+      } finally {
+        setProjectSaveState(false);
       }
-
-      clearForm();
-      closeRegistrationModal();
-      renderAreaOptions();
-      renderProjects();
-      showToast("Projeto cadastrado e salvo na planilha com sucesso.");
     });
 
     applyTheme("light", false);
@@ -10238,7 +10219,7 @@
         if (!result.ok) throw new Error(result.error || "Não foi possível concluir a operação.");
         return result;
       } catch (error) {
-        if (error?.name === "AbortError") throw new Error("A gravação ainda não foi confirmada pelo servidor. Aguarde alguns segundos e atualize a lista antes de tentar novamente, para evitar cadastro duplicado.");
+        if (error?.name === "AbortError") throw new Error("O servidor demorou para responder. Tente novamente.");
         throw error;
       } finally {
         window.clearTimeout(timeout);
@@ -10405,7 +10386,9 @@
       loginSubmit.disabled = true;
       loginSubmit.textContent = "Validando acesso...";
       try {
-        const result = await apiRequest("login", { email: loginEmail.value.trim(), password: loginPassword.value });
+        const credential = loginEmail.value.trim();
+        if (!credential || !loginPassword.value) throw new Error("Informe usuário e senha.");
+        const result = await apiRequest("login", { email: credential, usuario: credential, password: loginPassword.value }, "", 45000);
         const session = saveSession(result);
         loginPassword.value = "";
         await activateAuthenticatedSession(session, result);
@@ -10429,8 +10412,8 @@
       event.stopPropagation();
       const session = readStoredSession();
       logoutButton.disabled = true;
-      try { if (session?.token) await apiRequest("logout", {}, session.token); } catch (_) {}
       localStorage.removeItem(CSC_SESSION_KEY);
+      if (session?.token) apiRequest("logout", {}, session.token, 12000).catch(() => {});
       userSwitcher.classList.remove("open");
       loginScreen.hidden = false;
       document.body.classList.add("auth-pending");
