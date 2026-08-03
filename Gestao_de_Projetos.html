@@ -7339,6 +7339,72 @@
     }
   </style>
 
+
+  <style>
+    /* ===== v73: menu de conta simples e claro ===== */
+    .user-switcher {
+      top: calc(100% + 6px) !important;
+      right: 0 !important;
+      width: 150px !important;
+      padding: 6px !important;
+      border: 1px solid rgba(52, 137, 164, .24) !important;
+      border-radius: 11px !important;
+      background: rgba(252, 254, 255, .98) !important;
+      box-shadow: 0 10px 26px rgba(32, 75, 94, .14) !important;
+      backdrop-filter: blur(12px);
+    }
+    .user-switcher::before {
+      content: "";
+      position: absolute;
+      top: -5px;
+      right: 24px;
+      width: 9px;
+      height: 9px;
+      background: rgba(252, 254, 255, .98);
+      border-left: 1px solid rgba(52, 137, 164, .24);
+      border-top: 1px solid rgba(52, 137, 164, .24);
+      transform: rotate(45deg);
+    }
+    .logout-button {
+      width: 100% !important;
+      min-height: 36px !important;
+      margin: 0 !important;
+      padding: 0 11px !important;
+      display: flex !important;
+      align-items: center !important;
+      gap: 9px !important;
+      justify-content: flex-start !important;
+      border: 0 !important;
+      border-radius: 8px !important;
+      color: #d6454f !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      font-size: .75rem !important;
+      font-weight: 750 !important;
+      text-align: left !important;
+      transition: background .15s ease, color .15s ease !important;
+    }
+    .logout-button:hover {
+      filter: none !important;
+      color: #c93642 !important;
+      background: rgba(214, 69, 79, .08) !important;
+      box-shadow: none !important;
+    }
+    .logout-button:active {
+      transform: none !important;
+      background: rgba(214, 69, 79, .13) !important;
+      box-shadow: none !important;
+    }
+    .logout-icon {
+      width: 18px;
+      height: 18px;
+      display: inline-grid;
+      place-items: center;
+      font-size: 1rem;
+      line-height: 1;
+      transform: rotate(180deg);
+    }
+  </style>
 </head>
 <body data-theme="light" class="auth-pending">
 
@@ -7528,11 +7594,13 @@
               <small id="profileRole">Gerente CSC</small>
             </div>
             <span class="status-dot" aria-label="Online"></span>
-            <div id="userSwitcher" class="user-switcher">
-              <label>Usuário conectado</label>
+            <div id="userSwitcher" class="user-switcher" aria-label="Menu da conta">
               <select id="currentUserSelect" hidden aria-hidden="true"></select>
-              <small id="sessionUserEmail" class="session-user-detail">Sessão autenticada pelo Apps Script.</small>
-              <button id="logoutButton" class="logout-button" type="button">Sair do sistema</button>
+              <small id="sessionUserEmail" class="session-user-detail" hidden></small>
+              <button id="logoutButton" class="logout-button" type="button" aria-label="Sair do sistema">
+                <span class="logout-icon" aria-hidden="true">↪</span>
+                <span>Sair</span>
+              </button>
             </div>
           </div>
         </div>
