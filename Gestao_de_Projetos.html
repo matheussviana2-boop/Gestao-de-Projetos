@@ -10078,127 +10078,157 @@
     document.getElementById("clearProjectForm").addEventListener("click", clearForm);
 
     document.getElementById("saveProject").addEventListener("click", async () => {
-      if (!currentUserCanCreateProjects()) return showToast("Seu perfil não permite cadastrar projetos.");
-      const name = document.getElementById("projectName").value.trim();
-      const ownerInput = document.getElementById("projectOwner").value.trim();
-      const description = document.getElementById("projectDescription").value.trim() || "Projeto cadastrado pelo sistema";
-      const projectLink = document.getElementById("projectLink").value.trim();
-      const start = document.getElementById("projectStart").value;
-      const end = document.getElementById("projectEnd").value;
-      const status = document.getElementById("projectStatus").value;
-      const progress = Number(progressInput.value);
-      const selectedArea = document.getElementById("projectArea").value;
+      const saveButton = document.getElementById("saveProject");
+      const originalButtonHtml = saveButton.innerHTML;
 
-      if (!name || !ownerInput || !start || !end) {
-        showToast("Preencha nome, responsável, data de início e data final.");
-        return;
+      function showRegistrationFeedback(message, type = "info") {
+        let feedback = document.getElementById("registrationFeedback");
+        if (!feedback) {
+          feedback = document.createElement("div");
+          feedback.id = "registrationFeedback";
+          feedback.setAttribute("role", "status");
+          feedback.style.cssText = [
+            "margin:0 18px 14px",
+            "padding:11px 13px",
+            "border-radius:10px",
+            "font-size:13px",
+            "font-weight:700",
+            "line-height:1.35",
+            "border:1px solid transparent"
+          ].join(";");
+          const actions = document.querySelector(".registration-form-panel .form-actions");
+          actions?.parentNode?.insertBefore(feedback, actions);
+        }
+        const styles = {
+          info: ["#eaf6ff", "#1676b8", "#a9d9f6"],
+          success: ["#eafaf1", "#137a45", "#9addb9"],
+          error: ["#fff0f1", "#bd2634", "#f2b4ba"]
+        };
+        const [background, color, borderColor] = styles[type] || styles.info;
+        feedback.style.background = background;
+        feedback.style.color = color;
+        feedback.style.borderColor = borderColor;
+        feedback.textContent = message;
+        feedback.hidden = false;
       }
 
-      if (projectLink) {
-        try {
-          const parsedLink = new URL(projectLink);
-          if (!["http:", "https:"].includes(parsedLink.protocol)) throw new Error("invalid protocol");
-        } catch (error) {
-          showToast("Informe um link válido, começando com http:// ou https://.");
+      try {
+        if (!currentUserCanCreateProjects()) {
+          showRegistrationFeedback("Seu perfil não permite cadastrar projetos.", "error");
+          showToast("Seu perfil não permite cadastrar projetos.");
           return;
         }
-      }
 
-      if (new Date(`${end}T00:00:00`) < new Date(`${start}T00:00:00`)) {
-        showToast("A data final não pode ser anterior à data de início.");
-        return;
-      }
+        const name = document.getElementById("projectName")?.value.trim() || "";
+        const ownerInput = document.getElementById("projectOwner")?.value.trim() || currentUser?.name || "";
+        const description = document.getElementById("projectDescription")?.value.trim() || "Projeto cadastrado pelo sistema";
+        const projectLink = document.getElementById("projectLink")?.value.trim() || "";
+        const start = document.getElementById("projectStart")?.value || "";
+        const endDate = document.getElementById("projectEnd")?.value || "";
+        const status = document.getElementById("projectStatus")?.value || "Em andamento";
+        const progress = Number(document.getElementById("projectProgress")?.value || 0);
+        const selectedArea = document.getElementById("projectArea")?.value || "Outros";
 
-      if (new Date(end) < new Date(start)) {
-        showToast("A data final não pode ser anterior à data de início.");
-        return;
-      }
-
-      if (editingProjectId !== null) {
-        const project = projects.find(item => item.id === editingProjectId);
-        if (!project) {
-          showToast("Não foi possível localizar o projeto para edição.");
+        if (!name || !ownerInput || !start || !endDate) {
+          const message = "Preencha nome, responsável, data de início e data final.";
+          showRegistrationFeedback(message, "error");
+          showToast(message);
           return;
         }
 
-        project.name = name;
-        project.description = description;
-        project.link = projectLink;
-        project.area = selectedArea;
-        project.owner = ownerInput;
-        project.initials = initialsFromName(ownerInput);
-        project.start = formatDateInput(start);
-        project.end = formatDateInput(end);
-        project.progress = progress;
-        project.status = progress === 100 ? "Concluído" : status;
-        project.orangeIcon = ["Pausado", "Em atraso"].includes(project.status);
-        project.updates = Array.isArray(project.updates) ? project.updates : [];
-        project.updates.unshift({
-          id: Date.now(),
-          dateTime: formatDateTimeNow(),
-          actor: currentUser.name,
-          type: "project_updated",
-          note: `Cadastro do projeto atualizado por ${currentUser.name}.`
-        });
+        if (projectLink) {
+          try {
+            const parsedLink = new URL(projectLink);
+            if (!["http:", "https:"].includes(parsedLink.protocol)) throw new Error("invalid protocol");
+          } catch (_) {
+            const message = "Informe um link válido, começando com http:// ou https://.";
+            showRegistrationFeedback(message, "error");
+            showToast(message);
+            return;
+          }
+        }
 
-        syncProjectDeadlineStatus(project);
-        try {
-          const session = readStoredSession();
-          if (!session) throw new Error("Sessão expirada.");
+        if (new Date(`${endDate}T00:00:00`) < new Date(`${start}T00:00:00`)) {
+          const message = "A data final não pode ser anterior à data de início.";
+          showRegistrationFeedback(message, "error");
+          showToast(message);
+          return;
+        }
+
+        saveButton.disabled = true;
+        saveButton.setAttribute("aria-busy", "true");
+        saveButton.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite"></span> Salvando...';
+        if (!document.getElementById("registrationSpinnerStyle")) {
+          const style = document.createElement("style");
+          style.id = "registrationSpinnerStyle";
+          style.textContent = "@keyframes spin{to{transform:rotate(360deg)}}";
+          document.head.appendChild(style);
+        }
+        showRegistrationFeedback("Salvando o projeto na planilha. Aguarde...", "info");
+
+        const session = readStoredSession();
+        if (!session) throw new Error("Sessão expirada. Entre novamente.");
+
+        if (editingProjectId !== null) {
+          const project = projects.find(item => item.id === editingProjectId);
+          if (!project) throw new Error("Não foi possível localizar o projeto para edição.");
+
           await apiRequest("updateProject", {
             projectId: project.id,
             patch: {
-              nome: project.name,
-              area: project.area,
-              descricao: project.description,
-              dataInicio: project.start,
-              dataFim: project.end,
-              responsavel: project.owner,
-              status: project.status,
-              progresso: project.progress,
-              linkSistema: project.link
+              nome: name,
+              area: selectedArea,
+              descricao: description,
+              dataInicio: formatDateInput(start),
+              dataFim: formatDateInput(endDate),
+              responsavel: ownerInput,
+              status: progress === 100 ? "Concluído" : status,
+              progresso: progress,
+              linkSistema: projectLink
             },
             justificativa: "Atualização cadastral realizada pelo responsável."
-          }, session.token);
+          }, session.token, 20000);
+
           await loadBackendProjects(session);
-        } catch (error) {
-          showToast(error.message || "Não foi possível salvar o projeto na planilha.");
+          persistProjects();
+          clearForm();
+          closeRegistrationModal();
+          renderAreaOptions();
+          renderProjects();
+          showToast("Projeto atualizado com sucesso.");
           return;
         }
-        persistProjects();
-        clearForm();
-        closeRegistrationModal();
-        renderAreaOptions();
-        renderProjects();
-        showToast("Projeto atualizado com sucesso.");
-        return;
-      }
 
-      const owner = currentUser.name;
-      try {
-        const session = readStoredSession();
-        if (!session) throw new Error("Sessão expirada. Entre novamente.");
-        await apiRequest("createProject", {
+        const result = await apiRequest("createProject", {
           project: {
             nome: name,
             area: selectedArea,
             descricao: description,
             dataInicio: formatDateInput(start),
-            dataFim: formatDateInput(end),
+            dataFim: formatDateInput(endDate),
+            responsavel: ownerInput,
+            status: progress === 100 ? "Concluído" : status,
+            progresso: progress,
             linkSistema: projectLink
           }
-        }, session.token);
-        await loadBackendProjects(session);
-      } catch (error) {
-        showToast(error.message || "Não foi possível cadastrar o projeto na planilha.");
-        return;
-      }
+        }, session.token, 20000);
 
-      clearForm();
-      closeRegistrationModal();
-      renderAreaOptions();
-      renderProjects();
-      showToast("Projeto cadastrado e salvo na planilha com sucesso.");
+        await loadBackendProjects(session);
+        clearForm();
+        closeRegistrationModal();
+        renderAreaOptions();
+        renderProjects();
+        showToast(result?.message || "Projeto cadastrado e salvo na planilha com sucesso.");
+      } catch (error) {
+        console.error("Falha ao salvar projeto:", error);
+        const message = error?.message || "Não foi possível cadastrar o projeto. Tente novamente.";
+        showRegistrationFeedback(message, "error");
+        showToast(message);
+      } finally {
+        saveButton.disabled = false;
+        saveButton.removeAttribute("aria-busy");
+        saveButton.innerHTML = originalButtonHtml;
+      }
     });
 
     applyTheme("light", false);
