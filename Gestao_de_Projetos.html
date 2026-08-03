@@ -7326,6 +7326,19 @@
     }
   </style>
 
+
+  <style>
+    /* ===== v71: logout imediato e background de login mais suave ===== */
+    .login-screen::before {
+      background: linear-gradient(90deg, rgba(246,251,253,.34), rgba(255,255,255,.20)) !important;
+      z-index: 0;
+    }
+    .login-card {
+      position: relative;
+      z-index: 1;
+    }
+  </style>
+
 </head>
 <body data-theme="light" class="auth-pending">
 
@@ -10364,20 +10377,32 @@
       loginPassword.type = showing ? "password" : "text";
       document.getElementById("toggleLoginPassword").setAttribute("aria-label", showing ? "Mostrar senha" : "Ocultar senha");
     });
-
-    logoutButton.addEventListener("click", async event => {
+    logoutButton.addEventListener("click", event => {
+      event.preventDefault();
       event.stopPropagation();
+
       const session = readStoredSession();
-      logoutButton.disabled = true;
-      try { if (session?.token) await apiRequest("logout", {}, session.token); } catch (_) {}
+      const lastEmail = currentUser?.email || loginEmail.value || "";
+
+      // Encerra a sessão visual imediatamente, sem esperar a resposta do servidor.
       localStorage.removeItem(CSC_SESSION_KEY);
       userSwitcher.classList.remove("open");
       loginScreen.hidden = false;
       document.body.classList.add("auth-pending");
-      loginEmail.value = currentUser?.email || "";
+      loginEmail.value = lastEmail;
       loginPassword.value = "";
       loginError.textContent = "";
+      loginSubmit.disabled = false;
+      loginSubmit.textContent = "Entrar no sistema";
       logoutButton.disabled = false;
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+
+      // Invalida o token no backend em segundo plano.
+      if (session?.token) {
+        apiRequest("logout", {}, session.token, 6000).catch(() => {});
+      }
+
+      window.setTimeout(() => loginEmail.focus(), 80);
     });
 
     // O seletor antigo permanece oculto apenas para compatibilidade com o protótipo.
