@@ -7,7 +7,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <title>CSC Gestão de Projetos | v73</title>
+  <title>CSC Gestão de Projetos | v74</title>
   <style>
     :root {
       --bg: #030a12;
@@ -6053,7 +6053,29 @@
     @keyframes project-spin { to { transform: rotate(360deg); } }
     .registration-item { transition: border-color .18s ease, background .18s ease, transform .18s ease; }
     .registration-item:hover { border-color: rgba(0,150,190,.36); background: rgba(255,255,255,.58); transform: translateY(-1px); }
-</style>
+
+    /* ===== Ajustes v74 ===== */
+    .owner-column { align-items:center !important; text-align:center; }
+    .owner-stack { justify-content:center !important; width:100%; }
+    .last-update-cell { white-space:nowrap; font-size:.72rem; font-weight:700; color:var(--muted); }
+    .timeline-pagination-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px 2px; font-size:.72rem; color:var(--muted); }
+    .timeline-pagination-row .pagination { margin-left:auto; }
+    .milestone time { font-size:.72rem !important; }
+    .milestone strong { font-size:.76rem !important; line-height:1.35; }
+    .milestone small { font-size:.66rem !important; line-height:1.35; }
+    .page-btn:disabled { opacity:.38; cursor:not-allowed; }
+    .registration-disable-btn { width:36px;height:36px;border-radius:10px;border:1px solid rgba(226,146,38,.38);background:rgba(226,146,38,.09);color:#c77a12;display:inline-flex;align-items:center;justify-content:center;cursor:pointer; }
+    .registration-disable-btn:hover:not(:disabled){background:rgba(226,146,38,.17);border-color:rgba(226,146,38,.58)}
+    .registration-disable-btn:disabled { opacity:.38; cursor:not-allowed; }
+    .registration-disable-btn svg { width:17px;height:17px; }
+    #calendarPage .gantt-project strong { white-space:normal !important; overflow-wrap:anywhere; text-overflow:clip !important; line-height:1.25; }
+    #calendarPage .gantt-project { min-height:58px; }
+    #calendarPage .gantt-header[class*="month-"] { background:#17394a !important; color:#f7fbff !important; }
+    #calendarPage .gantt-row-id, #calendarPage .gantt-header:first-child, #calendarPage .gantt-header.project-head, #calendarPage .gantt-header:last-child { background:#17394a !important; color:#f7fbff !important; }
+    #calendarPage .gantt-bar, #calendarPage .gantt-bar.paused, #calendarPage .gantt-bar.completed, #calendarPage .gantt-bar.delayed, #calendarPage .gantt-bar.cancelled,
+    #calendarPage .calendar-progress-fill, #calendarPage .calendar-progress-fill.paused, #calendarPage .calendar-progress-fill.completed, #calendarPage .calendar-progress-fill.delayed, #calendarPage .calendar-progress-fill.cancelled { background:#2f9fc0 !important; }
+
+  </style>
 
   <style>
     /* ===== Ajuste v41: logo significativamente maior ===== */
@@ -7666,6 +7688,7 @@
                   <th>Fim</th>
                   <th>Progresso</th>
                   <th>Status</th>
+                  <th>Última atualização</th>
                   <th class="notes-cell">Atualizações</th>
                   <th class="project-link-cell">Sistema</th>
                 </tr>
@@ -7677,10 +7700,7 @@
 
           <div class="table-footer">
             <span id="projectCount">Mostrando 0 projetos</span>
-            <div class="pagination" aria-label="Paginação">
-              <button class="page-btn active">1</button>
-              <button class="page-btn">›</button>
-            </div>
+            <div id="projectPagination" class="pagination" aria-label="Paginação dos projetos"></div>
           </div>
         </article>
 
@@ -7788,6 +7808,10 @@
                   <small>Roteirizador</small>
                 </div>
               </div>
+            </div>
+            <div class="timeline-pagination-row">
+              <span id="milestoneCount">0 entregas</span>
+              <div id="milestonePagination" class="pagination" aria-label="Paginação das próximas entregas"></div>
             </div>
           </div>
         </article>
@@ -8497,11 +8521,39 @@
       });
     }
 
+    const PROJECTS_PER_PAGE = 5;
+    const MILESTONES_PER_PAGE = 5;
+    let projectCurrentPage = 1;
+    let milestoneCurrentPage = 1;
+
+    function getProjectLastUpdate(project) {
+      const updates = Array.isArray(project.updates) ? project.updates : [];
+      const last = updates.length ? updates[updates.length - 1] : null;
+      return last?.dateTime || project.updatedAt || project.lastUpdate || project.start || "—";
+    }
+
+    function renderPagination(container, currentPage, totalPages, onChange) {
+      if (!container) return;
+      if (totalPages <= 1) { container.innerHTML = ""; return; }
+      let html = `<button class="page-btn" data-page="${Math.max(1,currentPage-1)}" ${currentPage===1?"disabled":""}>‹</button>`;
+      for (let page=1; page<=totalPages; page++) html += `<button class="page-btn ${page===currentPage?"active":""}" data-page="${page}">${page}</button>`;
+      html += `<button class="page-btn" data-page="${Math.min(totalPages,currentPage+1)}" ${currentPage===totalPages?"disabled":""}>›</button>`;
+      container.innerHTML = html;
+      container.querySelectorAll("[data-page]").forEach(button => button.addEventListener("click", () => {
+        const page = Number(button.dataset.page);
+        if (!button.disabled && page !== currentPage) onChange(page);
+      }));
+    }
+
     function renderProjects() {
       syncAllProjectDeadlines();
       const filtered = getFilteredProjects();
+      const totalPages = Math.max(1, Math.ceil(filtered.length / PROJECTS_PER_PAGE));
+      projectCurrentPage = Math.min(projectCurrentPage, totalPages);
+      const pageStart = (projectCurrentPage - 1) * PROJECTS_PER_PAGE;
+      const visibleProjects = filtered.slice(pageStart, pageStart + PROJECTS_PER_PAGE);
 
-      tableBody.innerHTML = filtered.map(project => `
+      tableBody.innerHTML = visibleProjects.map(project => `
         <tr class="project-row ${project.status === "Em atraso" ? "overdue-row" : ""}" data-id="${project.id}" title="Clique para atualizar o andamento">
           <td>
             <div class="project-cell">
@@ -8539,6 +8591,7 @@
           <td>
             ${statusIconHtml(project.status)}
           </td>
+          <td class="last-update-cell">${escapeHtml(getProjectLastUpdate(project))}</td>
           <td class="notes-cell">
             <button class="notes-button" type="button" data-history-id="${project.id}" aria-label="Abrir histórico de ${escapeHtml(project.name)}" title="Ver notas e atualizações">
               <svg><use href="#i-notes"/></svg>
@@ -8555,7 +8608,10 @@
       emptyState.innerHTML = projects.length === 0
         ? 'Nenhum projeto cadastrado. Utilize o menu <strong>Cadastros</strong> para iniciar a base.'
         : 'Nenhum projeto encontrado com os filtros atuais.';
-      projectCount.textContent = `Mostrando ${filtered.length} de ${projects.length} projetos`;
+      const shownStart = filtered.length ? pageStart + 1 : 0;
+      const shownEnd = Math.min(pageStart + visibleProjects.length, filtered.length);
+      projectCount.textContent = `Mostrando ${shownStart}–${shownEnd} de ${filtered.length} projetos`;
+      renderPagination(document.getElementById("projectPagination"), projectCurrentPage, totalPages, page => { projectCurrentPage = page; renderProjects(); });
 
       tableBody.querySelectorAll(".project-row").forEach(row => {
         row.addEventListener("click", event => {
@@ -8677,16 +8733,8 @@
 
     function renderOwnerPie() {
       const ownerData = getOwnerCounts().slice(0, 8);
-      const ownerPalette = [
-        "#2f95ae",
-        "#427f9a",
-        "#f19a43",
-        "#53c991",
-        "#8b83d8",
-        "#e7869a",
-        "#d4ba6b",
-        "#668fb8"
-      ];
+      const avatarColorMap = { a1: "#0d8b9f", a2: "#a96447", a3: "#6d4ba5", a4: "#24936d", a5: "#b6812a", a6: "#98577f" };
+      const ownerPalette = ownerData.map(([owner]) => avatarColorMap[avatarForName(owner).avatar] || "#2f95ae");
 
       renderPieChartBlock({
         data: ownerData,
@@ -8738,39 +8786,37 @@
 
     function renderMilestones() {
       const container = document.getElementById("milestones");
-      if (projects.length === 0) {
-        container.innerHTML = `
-          <div class="timeline-empty">
-            <svg><use href="#i-calendar"/></svg>
-            <strong>Nenhuma entrega programada</strong>
-            <span>As datas finais dos projetos cadastrados aparecerão aqui como próximos marcos.</span>
-          </div>`;
-        return;
+      const sorted = [...projects].sort((a, b) => parseBrDate(a.end) - parseBrDate(b.end));
+      const totalPages = Math.max(1, Math.ceil(sorted.length / MILESTONES_PER_PAGE));
+      milestoneCurrentPage = Math.min(milestoneCurrentPage, totalPages);
+      const pageStart = (milestoneCurrentPage - 1) * MILESTONES_PER_PAGE;
+      const visible = sorted.slice(pageStart, pageStart + MILESTONES_PER_PAGE);
+      const count = document.getElementById("milestoneCount");
+      if (count) count.textContent = `${sorted.length} ${sorted.length === 1 ? "entrega" : "entregas"}`;
+
+      if (!visible.length) {
+        container.innerHTML = `<div class="milestone-empty">Nenhuma entrega cadastrada.</div>`;
+      } else {
+        container.innerHTML = visible.map((project, index) => {
+          const endDate = parseBrDate(project.end);
+          const weekday = new Intl.DateTimeFormat("pt-BR", { weekday: "long" }).format(endDate);
+          const weekdayLabel = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+          return `
+            <div class="milestone ${index % 2 ? "orange" : ""}">
+              <div class="milestone-icon"><svg><use href="#i-flag"/></svg></div>
+              <div>
+                <time>${formatMilestoneDate(project.end)}</time>
+                <strong>${escapeHtml(project.name)}</strong>
+                <small>${escapeHtml(project.status)} · ${escapeHtml(project.area)}</small>
+              </div>
+              <div class="milestone-axis-label" aria-hidden="true">
+                <strong>${formatMilestoneDate(project.end)}</strong>
+                <span>${escapeHtml(weekdayLabel)}</span>
+              </div>
+            </div>`;
+        }).join("");
       }
-
-      const sorted = [...projects]
-        .sort((a, b) => parseBrDate(a.end) - parseBrDate(b.end))
-        .slice(0, 5);
-
-      container.innerHTML = sorted.map((project, index) => {
-        const endDate = parseBrDate(project.end);
-        const weekday = new Intl.DateTimeFormat("pt-BR", { weekday: "long" }).format(endDate);
-        const weekdayLabel = weekday.charAt(0).toUpperCase() + weekday.slice(1);
-
-        return `
-          <div class="milestone ${index % 2 ? "orange" : ""}">
-            <div class="milestone-icon"><svg><use href="#i-flag"/></svg></div>
-            <div>
-              <time>${formatMilestoneDate(project.end)}</time>
-              <strong>${escapeHtml(project.name)}</strong>
-              <small>${escapeHtml(project.status)} · ${escapeHtml(project.area)}</small>
-            </div>
-            <div class="milestone-axis-label" aria-hidden="true">
-              <strong>${formatMilestoneDate(project.end)}</strong>
-              <span>${escapeHtml(weekdayLabel)}</span>
-            </div>
-          </div>`;
-      }).join("");
+      renderPagination(document.getElementById("milestonePagination"), milestoneCurrentPage, totalPages, page => { milestoneCurrentPage = page; renderMilestones(); });
     }
 
 
@@ -8875,7 +8921,7 @@
       }
 
       empty.hidden = true;
-      list.innerHTML = projects.slice(0, 12).map(project => `
+      list.innerHTML = projects.slice(0, 5).map(project => `
         <div class="registration-item">
           <div class="registration-item-icon"><svg><use href="#${project.icon || "i-folder"}"/></svg></div>
           <div class="registration-item-main">
@@ -8888,14 +8934,17 @@
           </div>
           <div class="registration-item-actions">
             <div class="registration-actions">
-              <button class="registration-delete-btn" type="button" data-delete-id="${project.id}" title="Excluir projeto" aria-label="Excluir projeto ${escapeHtml(project.name)}">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1 14H7L6 7zm3-4h6l1 2h4v2H4V5h4l1-2zm1 7v8h2v-8h-2zm4 0v8h2v-8h-2z" fill="currentColor"/></svg>
-              </button>
               <button class="registration-edit-btn" type="button" data-edit-id="${project.id}" title="Editar cadastro do projeto" aria-label="Editar cadastro do projeto ${escapeHtml(project.name)}">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" fill="currentColor"></path>
                   <path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.13 1.13l3.75 3.75l1.13-1.13z" fill="currentColor"></path>
                 </svg>
+              </button>
+              <button class="registration-disable-btn" type="button" data-disable-id="${project.id}" title="Desabilitar projeto" aria-label="Desabilitar projeto ${escapeHtml(project.name)}" ${project.status === "Cancelado" ? "disabled" : ""}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10.01 10.01 0 0 0 12 2Zm5.65 14.24L7.76 6.35A8 8 0 0 1 17.65 16.24ZM6.35 7.76l9.89 9.89A8 8 0 0 1 6.35 7.76Z" fill="currentColor"/></svg>
+              </button>
+              <button class="registration-delete-btn" type="button" data-delete-id="${project.id}" title="Excluir projeto" aria-label="Excluir projeto ${escapeHtml(project.name)}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1 14H7L6 7zm3-4h6l1 2h4v2H4V5h4l1-2zm1 7v8h2v-8h-2zm4 0v8h2v-8h-2z" fill="currentColor"/></svg>
               </button>
             </div>
           </div>
@@ -8906,6 +8955,32 @@
         button.addEventListener("click", event => {
           event.stopPropagation();
           openProjectEdit(button.dataset.editId);
+        });
+      });
+      list.querySelectorAll(".registration-disable-btn").forEach(button => {
+        button.addEventListener("click", async event => {
+          event.stopPropagation();
+          const project = projects.find(item => String(item.id) === String(button.dataset.disableId));
+          if (!project || project.status === "Cancelado") return;
+          if (!window.confirm(`Desabilitar o projeto “${project.name}”? Ele permanecerá cadastrado com status Cancelado.`)) return;
+          try {
+            const session = requireActiveSession();
+            button.disabled = true;
+            const result = await apiRequest("updateProject", {
+              projectId: project.id,
+              patch: { status: "Cancelado", progresso: Number(project.progress) || 0 },
+              justificativa: "Projeto desabilitado no cadastro."
+            }, session.token, 25000);
+            project.status = "Cancelado";
+            project.orangeIcon = false;
+            addProjectHistory(project, { type: "project_disabled", title: "Projeto desabilitado", note: "Projeto desabilitado no cadastro." });
+            persistProjects();
+            renderProjects();
+            showToast("Projeto desabilitado com sucesso.");
+          } catch (error) {
+            button.disabled = false;
+            showToast(error.message || "Não foi possível desabilitar o projeto.");
+          }
         });
       });
       list.querySelectorAll(".registration-delete-btn").forEach(button => {
@@ -10131,7 +10206,7 @@
         const width = Math.max(1.3, ((clippedEnd-clippedStart)/duration)*100);
         html += `
           <div class="gantt-cell gantt-row-id">${String(index+1).padStart(2,"0")}</div>
-          <div class="gantt-cell gantt-project"><strong title="${escapeHtml(item.project.name)} · ${escapeHtml(item.project.area)}">${escapeHtml(item.project.name)} · ${escapeHtml(item.project.area)}</strong><small>${escapeHtml(item.project.owner)}</small></div>
+          <div class="gantt-cell gantt-project"><strong title="${escapeHtml(item.project.name)}">${escapeHtml(item.project.name)}</strong><small>${escapeHtml(item.project.area)} · ${escapeHtml(item.project.owner)}</small></div>
           <div class="gantt-bar-layer"><div class="gantt-bar ${statusBarClass(item.project.status)}" style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%" data-project-name="${escapeHtml(item.project.name)}" data-start-date="${escapeHtml(item.project.start)}" data-end-date="${escapeHtml(item.project.end)}" title="Clique para visualizar as datas"></div></div>
           <div class="gantt-cell gantt-status-cell">
             <div class="calendar-progress-status">
@@ -10549,6 +10624,11 @@
     renderAreaOptions();
     renderProjects();
     showPage("Visão Geral");
+  
+    [searchInput, areaFilter, statusFilter].forEach(control => {
+      control.addEventListener(control === searchInput ? "input" : "change", () => { projectCurrentPage = 1; });
+    });
+
   </script>
 
 
