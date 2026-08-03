@@ -3273,7 +3273,8 @@
       border-radius: 12px;
       background: rgba(4, 18, 29, .54);
       padding: 11px;
-    }
+    
+      cursor: pointer;}
 
     .registration-item-icon {
       width: 42px;
@@ -8342,6 +8343,15 @@
       });
     }
 
+    function normalizeProjectId(value) {
+      return String(value ?? "").trim();
+    }
+
+    function findProjectById(projectId) {
+      const normalizedId = normalizeProjectId(projectId);
+      return projects.find(item => normalizeProjectId(item.id) === normalizedId);
+    }
+
     function renderProjects() {
       syncAllProjectDeadlines();
       const filtered = getFilteredProjects();
@@ -8408,14 +8418,14 @@
       tableBody.querySelectorAll(".project-row").forEach(row => {
         row.addEventListener("click", event => {
           if (event.target.closest(".notes-button, .project-link-button")) return;
-          openUpdateModal(Number(row.dataset.id));
+          openUpdateModal(row.dataset.id);
         });
       });
 
       tableBody.querySelectorAll(".notes-button").forEach(button => {
         button.addEventListener("click", event => {
           event.stopPropagation();
-          openHistoryModal(Number(button.dataset.historyId));
+          openHistoryModal(button.dataset.historyId);
         });
       });
 
@@ -8652,8 +8662,30 @@
         </div>
       `).join("");
 
+      list.querySelectorAll(".registration-item").forEach(item => {
+        const editButton = item.querySelector(".registration-edit-btn");
+        const projectId = editButton?.dataset.editId;
+        item.setAttribute("role", "button");
+        item.setAttribute("tabindex", "0");
+        item.title = "Clique para abrir o projeto";
+        const open = event => {
+          if (event?.target?.closest?.(".registration-edit-btn")) return;
+          openUpdateModal(projectId);
+        };
+        item.addEventListener("click", open);
+        item.addEventListener("keydown", event => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            open(event);
+          }
+        });
+      });
+
       list.querySelectorAll(".registration-edit-btn").forEach(button => {
-        button.addEventListener("click", () => openProjectEdit(Number(button.dataset.editId)));
+        button.addEventListener("click", event => {
+          event.stopPropagation();
+          openProjectEdit(button.dataset.editId);
+        });
       });
     }
 
@@ -8804,7 +8836,7 @@
     }
 
     function transferProjectOwnership(projectId, newOwner) {
-      const project = projects.find(item => item.id === projectId);
+      const project = findProjectById(projectId);
       if (!project || !userCanManageStructure(project)) return;
 
       const previousOwner = project.owner;
@@ -8836,7 +8868,7 @@
     }
 
     function removeProjectMember(projectId, memberName) {
-      const project = projects.find(item => item.id === projectId);
+      const project = findProjectById(projectId);
       if (!project || !userCanManageStructure(project)) return;
 
       project.members = (project.members || []).filter(name => name !== memberName);
@@ -9025,10 +9057,10 @@
     }
 
     function openUpdateModal(projectId) {
-      const project = projects.find(item => item.id === projectId);
+      const project = findProjectById(projectId);
       if (!project) return;
 
-      activeProjectId = projectId;
+      activeProjectId = normalizeProjectId(project.id);
       document.getElementById("updateProjectName").textContent = project.name;
       document.getElementById("updateProjectMeta").textContent =
         `${project.area} · Responsável principal: ${project.owner}`;
@@ -9051,7 +9083,7 @@
     }
 
     function requestProjectAccess(projectId) {
-      const project = projects.find(item => item.id === projectId);
+      const project = findProjectById(projectId);
       if (!project || userCanEdit(project) || getPendingRequest(project)) return;
 
       project.joinRequests = Array.isArray(project.joinRequests) ? project.joinRequests : [];
@@ -9077,7 +9109,7 @@
     }
 
     function decideJoinRequest(projectId, requestId, action) {
-      const project = projects.find(item => item.id === projectId);
+      const project = findProjectById(projectId);
       if (!project || !isProjectOwner(project)) return;
 
       const request = (project.joinRequests || []).find(item => String(item.id) === String(requestId));
@@ -9111,7 +9143,7 @@
     }
 
     function openHistoryModal(projectId) {
-      const project = projects.find(item => item.id === projectId);
+      const project = findProjectById(projectId);
       if (!project) return;
 
       markProjectUpdatesAsRead(project);
@@ -9199,7 +9231,7 @@
         list.querySelectorAll("[data-history-request-action]").forEach(button => {
           button.addEventListener("click", () => {
             decideJoinRequest(
-              Number(button.dataset.projectId),
+              button.dataset.projectId,
               button.dataset.requestId,
               button.dataset.historyRequestAction
             );
@@ -9237,7 +9269,7 @@
       updateProgressValue.textContent = `${progress}%`;
       const statusControl = document.getElementById("updateStatus");
       if (progress === 100) statusControl.value = "Concluído";
-      const project = projects.find(item => item.id === activeProjectId);
+      const project = findProjectById(activeProjectId);
       if (project) updateReasonRequirement(project);
     });
 
@@ -9246,7 +9278,7 @@
         updateProgressInput.value = "100";
         updateProgressValue.textContent = "100%";
       }
-      const project = projects.find(item => item.id === activeProjectId);
+      const project = findProjectById(activeProjectId);
       if (project) updateReasonRequirement(project);
     });
 
@@ -9265,12 +9297,12 @@
     });
 
     document.getElementById("structuralEnd").addEventListener("change", () => {
-      const project = projects.find(item => item.id === activeProjectId);
+      const project = findProjectById(activeProjectId);
       if (project) updateReasonRequirement(project);
     });
 
     document.getElementById("saveUpdate").addEventListener("click", async () => {
-      const project = projects.find(item => item.id === activeProjectId);
+      const project = findProjectById(activeProjectId);
       if (!project) return;
 
       if (!userCanEdit(project)) {
@@ -9466,7 +9498,7 @@
       list.querySelectorAll("[data-request-history-action]").forEach(button => {
         button.addEventListener("click", () => {
           decideJoinRequest(
-            Number(button.dataset.projectId),
+            button.dataset.projectId,
             button.dataset.requestId,
             button.dataset.requestHistoryAction
           );
@@ -9477,7 +9509,7 @@
       list.querySelectorAll("[data-request-open-project]").forEach(button => {
         button.addEventListener("click", () => {
           closeDialog(requestModal);
-          openUpdateModal(Number(button.dataset.requestOpenProject));
+          openUpdateModal(button.dataset.requestOpenProject);
         });
       });
     }
@@ -9915,10 +9947,10 @@
     }
 
     function openProjectEdit(projectId) {
-      const project = projects.find(item => item.id === projectId);
+      const project = findProjectById(projectId);
       if (!project) return;
 
-      editingProjectId = project.id;
+      editingProjectId = normalizeProjectId(project.id);
       document.getElementById("projectName").value = project.name || "";
       document.getElementById("projectArea").value = project.area || "Telemetria";
       document.getElementById("projectOwner").value = project.owner || currentUser.name;
@@ -10036,7 +10068,7 @@
       }
 
       if (editingProjectId !== null) {
-        const project = projects.find(item => item.id === editingProjectId);
+        const project = findProjectById(editingProjectId);
         if (!project) {
           showToast("Não foi possível localizar o projeto para edição.");
           return;
