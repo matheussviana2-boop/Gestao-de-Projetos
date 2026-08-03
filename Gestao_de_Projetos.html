@@ -7348,15 +7348,46 @@
       display: grid; place-items: center; color: #1b5268; font: 700 14px/1.4 Inter, sans-serif;
       background: rgba(239,248,252,.96);
     }
-    .system-confirm-card { width:min(440px, calc(100vw - 32px)); padding:0; overflow:hidden; }
-    .system-confirm-body { padding:22px 24px 18px; display:grid; gap:12px; }
-    .system-confirm-body p { margin:0; color:#38596a; line-height:1.55; }
-    .system-confirm-project { color:#173747; font-weight:800; }
-    .system-confirm-warning { font-size:.78rem; color:#a13a48; }
-    .system-confirm-actions { display:flex; justify-content:flex-end; gap:10px; padding:0 24px 22px; }
-    .system-confirm-delete { border:1px solid #c93c50; background:#c93c50; color:#fff; }
-    .system-confirm-delete:hover { filter:brightness(.96); }
+    #systemConfirmModal { background:rgba(23,53,68,.24); backdrop-filter:blur(7px); }
+    .system-confirm-card {
+      width:min(390px, calc(100vw - 32px));
+      padding:0; overflow:hidden;
+      border:1px solid #b9dcea;
+      border-radius:18px;
+      background:linear-gradient(180deg,#fbfeff 0%,#f1f8fb 100%);
+      box-shadow:0 22px 60px rgba(31,75,94,.22);
+      color:#183646;
+    }
+    .system-confirm-card .modal-header {
+      padding:15px 17px;
+      border-bottom:1px solid #d7e9f0;
+      background:rgba(240,248,252,.92);
+    }
+    .system-confirm-card .modal-header h2 { font-size:1rem; color:#193746; }
+    .system-confirm-card .modal-close {
+      width:32px;height:32px;border-radius:9px;
+      border:1px solid #b8d8e6;background:#edf7fb;color:#24647e;
+    }
+    .system-confirm-body { padding:18px 18px 14px; display:grid; gap:9px; }
+    .system-confirm-body p { margin:0; color:#466779; line-height:1.45; font-size:.88rem; }
+    .system-confirm-project { color:#183746; font-weight:800; }
+    .system-confirm-warning { font-size:.74rem!important; color:#7d6570!important; }
+    .system-confirm-actions { display:flex; justify-content:flex-end; gap:9px; padding:0 18px 18px; }
+    #systemConfirmCancel,#systemConfirmDelete {
+      min-height:36px;padding:0 15px;border-radius:10px;font-weight:700;font-size:.8rem;
+    }
+    #systemConfirmCancel { border:1px solid #b9d5e1;background:#f7fbfd;color:#315d70; }
+    #systemConfirmCancel:hover { background:#eaf5f9; }
+    .system-confirm-delete { border:1px solid #c94a5d;background:#c94a5d;color:#fff; }
+    .system-confirm-delete:hover { background:#b73e51; }
     .system-confirm-delete:disabled { opacity:.66; cursor:wait; }
+    .system-confirm-card .form-feedback {
+      margin:4px 0 0;padding:9px 11px;border-radius:10px;
+      background:#e9f6fb;border:1px solid #acdcec;color:#17637a;font-size:.78rem;font-weight:700;
+    }
+    .system-confirm-card .form-feedback.error {
+      background:#fff1f3;border-color:#efb2bc;color:#a52f43;
+    }
     .registration-delete-btn[data-saving="true"] { pointer-events:none; opacity:.62; }
 </style>
 
@@ -7902,7 +7933,7 @@
 
 
   <div id="systemConfirmModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="systemConfirmTitle">
-    <div class="modal-card system-confirm-card">
+    <div class="modal system-confirm-card">
       <div class="modal-header">
         <div><h2 id="systemConfirmTitle">Excluir projeto</h2></div>
         <button id="systemConfirmClose" class="modal-close" type="button" aria-label="Fechar confirmação">×</button>
@@ -8680,32 +8711,85 @@
     const systemConfirmDelete = document.getElementById("systemConfirmDelete");
     const systemConfirmCancel = document.getElementById("systemConfirmCancel");
     const systemConfirmClose = document.getElementById("systemConfirmClose");
-    let systemConfirmResolver = null;
+    let pendingDeleteProject = null;
+    let deletionInProgress = false;
 
-    function closeSystemConfirm(result = false) {
-      if (!systemConfirmModal.classList.contains("open")) return;
+    function setDeleteModalBusy(isBusy, message = "") {
+      deletionInProgress = isBusy;
+      systemConfirmDelete.disabled = isBusy;
+      systemConfirmCancel.disabled = isBusy;
+      systemConfirmClose.disabled = isBusy;
+      systemConfirmDelete.textContent = isBusy ? "Excluindo..." : "Excluir projeto";
+      systemConfirmStatus.hidden = !message;
+      systemConfirmStatus.textContent = message;
+      systemConfirmStatus.classList.toggle("error", Boolean(message) && !isBusy);
+    }
+
+    function closeSystemConfirm() {
+      if (deletionInProgress || !systemConfirmModal.classList.contains("open")) return;
       closeDialog(systemConfirmModal);
-      systemConfirmDelete.disabled = false;
-      systemConfirmDelete.textContent = "Excluir projeto";
-      systemConfirmStatus.hidden = true;
-      systemConfirmStatus.textContent = "";
-      const resolver = systemConfirmResolver;
-      systemConfirmResolver = null;
-      if (resolver) resolver(result);
+      pendingDeleteProject = null;
+      setDeleteModalBusy(false, "");
     }
 
     function requestProjectDeletion(project) {
-      if (systemConfirmResolver) closeSystemConfirm(false);
+      pendingDeleteProject = project;
       systemConfirmProject.textContent = `“${project.name}”`;
-      systemConfirmStatus.hidden = true;
+      setDeleteModalBusy(false, "");
       openDialog(systemConfirmModal);
-      return new Promise(resolve => { systemConfirmResolver = resolve; });
     }
 
-    systemConfirmCancel.addEventListener("click", () => closeSystemConfirm(false));
-    systemConfirmClose.addEventListener("click", () => closeSystemConfirm(false));
-    systemConfirmModal.addEventListener("click", event => { if (event.target === systemConfirmModal) closeSystemConfirm(false); });
-    systemConfirmDelete.addEventListener("click", () => closeSystemConfirm(true));
+    function cancelSystemConfirm(event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+      }
+      closeSystemConfirm();
+    }
+
+    systemConfirmCancel.addEventListener("click", cancelSystemConfirm, true);
+    systemConfirmClose.addEventListener("click", cancelSystemConfirm, true);
+    systemConfirmModal.addEventListener("click", event => {
+      if (event.target === systemConfirmModal) cancelSystemConfirm(event);
+    }, true);
+    systemConfirmDelete.addEventListener("click", async event => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+      if (deletionInProgress || !pendingDeleteProject) return;
+
+      const project = pendingDeleteProject;
+      try {
+        const session = requireActiveSession();
+        setDeleteModalBusy(true, "Excluindo o projeto da planilha. Aguarde...");
+
+        const result = await apiRequest("deleteProject", {
+          projectId: project.id,
+          id: project.id
+        }, session.token, 30000);
+
+        if (!result.deleted) throw new Error("O servidor não confirmou a exclusão.");
+        projects = projects.filter(item => String(item.id) !== String(project.id));
+        persistProjects();
+        renderAreaOptions();
+        renderProjects();
+        setDeleteModalBusy(false, "");
+        closeDialog(systemConfirmModal);
+        pendingDeleteProject = null;
+        showToast("Projeto excluído da planilha e removido do sistema.");
+        syncProjectsInBackground(session);
+      } catch (error) {
+        console.error("Falha ao excluir projeto:", error);
+        setDeleteModalBusy(false, error.message || "Não foi possível excluir o projeto da planilha.");
+      }
+    }, true);
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && systemConfirmModal.classList.contains("open")) {
+        cancelSystemConfirm(event);
+      }
+    }, true);
+
 
     function renderRegistrationList() {
       const list = document.getElementById("registrationList");
@@ -8760,25 +8844,7 @@
           event.stopPropagation();
           const project = projects.find(item => String(item.id) === String(button.dataset.deleteId));
           if (!project) return;
-          const confirmed = await requestProjectDeletion(project);
-          if (!confirmed) return;
-          button.disabled = true;
-          button.dataset.saving = "true";
-          try {
-            const session = requireActiveSession();
-            showToast("Excluindo projeto da planilha...");
-            await apiRequest("deleteProject", { projectId: project.id }, session.token, 45000);
-            projects = projects.filter(item => String(item.id) !== String(project.id));
-            persistProjects();
-            renderProjects();
-            showToast("Projeto excluído do sistema e da planilha.");
-            syncProjectsInBackground(session);
-          } catch (error) {
-            showToast(error.message || "Não foi possível excluir o projeto da planilha.");
-          } finally {
-            button.disabled = false;
-            delete button.dataset.saving;
-          }
+          requestProjectDeletion(project);
         });
       });
       list.querySelectorAll(".registration-item").forEach(item => {
@@ -9509,7 +9575,7 @@
       setUpdateSaveState(true);
       try {
         const session = requireActiveSession();
-        await apiRequest("updateProject", {
+        const result = await apiRequest("updateProject", {
           projectId: project.id,
           patch: {
             dataFim: project.end,
@@ -9518,7 +9584,13 @@
             linkSistema: project.link || ""
           },
           justificativa: reason || note || "Atualização de andamento registrada no sistema."
-        }, session.token);
+        }, session.token, 30000);
+        if (result.project) {
+          const index = projects.findIndex(item => String(item.id) === String(project.id));
+          const mapped = mapApiProject(result.project, result.updates || [], result.requests || []);
+          mapped.updates = Array.isArray(project.updates) ? project.updates : mapped.updates;
+          if (index >= 0) projects[index] = { ...project, ...mapped };
+        }
         syncProjectsInBackground(session);
       } catch (error) {
         showValidation(error.message || "Não foi possível salvar a atualização na planilha.");
@@ -10239,7 +10311,7 @@
             projectId: currentProject.id,
             patch,
             justificativa: "Atualização cadastral realizada pelo responsável."
-          }, session.token, 60000);
+          }, session.token, 30000);
 
           const updatedApiProject = result.project || result.updatedProject;
           if (updatedApiProject) {
@@ -10280,7 +10352,7 @@
           progresso: progress,
           linkSistema: projectLink
         };
-        const result = await apiRequest("createProject", { project: payloadProject }, session.token, 60000);
+        const result = await apiRequest("createProject", { project: payloadProject }, session.token, 30000);
         const apiProject = result.project || result.createdProject || {
           id: result.projectId || result.id || `pending-${Date.now()}`,
           ...payloadProject,
@@ -10344,7 +10416,13 @@
       };
     }
 
+    const apiInFlight = new Map();
+
     async function apiRequest(action, payload = {}, token = "", timeoutMs = 30000) {
+      const requestKey = [action, token, JSON.stringify(payload)].join("|");
+      if (["createProject", "updateProject", "deleteProject", "addUpdate"].includes(action) && apiInFlight.has(requestKey)) {
+        return apiInFlight.get(requestKey);
+      }
       const controller = new AbortController();
       const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
       try {
