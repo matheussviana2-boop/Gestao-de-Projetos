@@ -4,7 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#06111c" />
-  <title>CSC Gestão de Projetos | Login integrado</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>CSC Gestão de Projetos | v73</title>
   <style>
     :root {
       --bg: #030a12;
@@ -7337,10 +7340,28 @@
     #saveUpdate[data-saving="true"]{pointer-events:none;opacity:.82}
 
       #toggleLoginPassword{display:none!important}
-  </style>
+  
+    /* ===== v73: sessão sem flash, confirmação interna e estados de exclusão ===== */
+    body.session-checking .login-screen { visibility: hidden !important; opacity: 0 !important; pointer-events: none !important; }
+    body.session-checking::after {
+      content: "Validando sessão..."; position: fixed; inset: 0; z-index: 12000;
+      display: grid; place-items: center; color: #1b5268; font: 700 14px/1.4 Inter, sans-serif;
+      background: rgba(239,248,252,.96);
+    }
+    .system-confirm-card { width:min(440px, calc(100vw - 32px)); padding:0; overflow:hidden; }
+    .system-confirm-body { padding:22px 24px 18px; display:grid; gap:12px; }
+    .system-confirm-body p { margin:0; color:#38596a; line-height:1.55; }
+    .system-confirm-project { color:#173747; font-weight:800; }
+    .system-confirm-warning { font-size:.78rem; color:#a13a48; }
+    .system-confirm-actions { display:flex; justify-content:flex-end; gap:10px; padding:0 24px 22px; }
+    .system-confirm-delete { border:1px solid #c93c50; background:#c93c50; color:#fff; }
+    .system-confirm-delete:hover { filter:brightness(.96); }
+    .system-confirm-delete:disabled { opacity:.66; cursor:wait; }
+    .registration-delete-btn[data-saving="true"] { pointer-events:none; opacity:.62; }
+</style>
 
 </head>
-<body data-theme="light" class="auth-pending">
+<body data-theme="light" class="auth-pending session-checking">
 
   <section id="loginScreen" class="login-screen" aria-label="Acesso ao sistema">
     <div class="login-card">
@@ -7878,6 +7899,25 @@
   </div>
 
 
+
+
+  <div id="systemConfirmModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="systemConfirmTitle">
+    <div class="modal-card system-confirm-card">
+      <div class="modal-header">
+        <div><h2 id="systemConfirmTitle">Excluir projeto</h2></div>
+        <button id="systemConfirmClose" class="modal-close" type="button" aria-label="Fechar confirmação">×</button>
+      </div>
+      <div class="system-confirm-body">
+        <p>Deseja excluir definitivamente o projeto <span id="systemConfirmProject" class="system-confirm-project"></span>?</p>
+        <p class="system-confirm-warning">O registro será removido do sistema e da planilha. Esta ação não poderá ser desfeita.</p>
+        <p id="systemConfirmStatus" class="form-feedback" hidden></p>
+      </div>
+      <div class="system-confirm-actions">
+        <button id="systemConfirmCancel" class="secondary-button" type="button">Cancelar</button>
+        <button id="systemConfirmDelete" class="primary-button system-confirm-delete" type="button">Excluir projeto</button>
+      </div>
+    </div>
+  </div>
 
   <div id="userModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="userModalTitle">
     <div class="modal user-modal-card">
@@ -8566,7 +8606,13 @@
       });
 
       const statusData = getStatusCounts();
-      const statusPalette = ["#2f95ae", "#f19a43", "#128a5a", "#d94b5d"];
+      const statusColorMap = {
+        "Em andamento": "#2f95ae",
+        "Pausado": "#f19a43",
+        "Concluído": "#128a5a",
+        "Em atraso": "#d94b5d"
+      };
+      const statusPalette = statusData.map(([status]) => statusColorMap[status] || "#668fb8");
 
       renderPieChartBlock({
         data: statusData,
@@ -8627,6 +8673,40 @@
       }).join("");
     }
 
+
+    const systemConfirmModal = document.getElementById("systemConfirmModal");
+    const systemConfirmProject = document.getElementById("systemConfirmProject");
+    const systemConfirmStatus = document.getElementById("systemConfirmStatus");
+    const systemConfirmDelete = document.getElementById("systemConfirmDelete");
+    const systemConfirmCancel = document.getElementById("systemConfirmCancel");
+    const systemConfirmClose = document.getElementById("systemConfirmClose");
+    let systemConfirmResolver = null;
+
+    function closeSystemConfirm(result = false) {
+      if (!systemConfirmModal.classList.contains("open")) return;
+      closeDialog(systemConfirmModal);
+      systemConfirmDelete.disabled = false;
+      systemConfirmDelete.textContent = "Excluir projeto";
+      systemConfirmStatus.hidden = true;
+      systemConfirmStatus.textContent = "";
+      const resolver = systemConfirmResolver;
+      systemConfirmResolver = null;
+      if (resolver) resolver(result);
+    }
+
+    function requestProjectDeletion(project) {
+      if (systemConfirmResolver) closeSystemConfirm(false);
+      systemConfirmProject.textContent = `“${project.name}”`;
+      systemConfirmStatus.hidden = true;
+      openDialog(systemConfirmModal);
+      return new Promise(resolve => { systemConfirmResolver = resolve; });
+    }
+
+    systemConfirmCancel.addEventListener("click", () => closeSystemConfirm(false));
+    systemConfirmClose.addEventListener("click", () => closeSystemConfirm(false));
+    systemConfirmModal.addEventListener("click", event => { if (event.target === systemConfirmModal) closeSystemConfirm(false); });
+    systemConfirmDelete.addEventListener("click", () => closeSystemConfirm(true));
+
     function renderRegistrationList() {
       const list = document.getElementById("registrationList");
       const empty = document.getElementById("registrationEmpty");
@@ -8680,19 +8760,25 @@
           event.stopPropagation();
           const project = projects.find(item => String(item.id) === String(button.dataset.deleteId));
           if (!project) return;
-          if (!confirm(`Excluir definitivamente o projeto “${project.name}”? Essa ação também removerá o registro da planilha.`)) return;
+          const confirmed = await requestProjectDeletion(project);
+          if (!confirmed) return;
           button.disabled = true;
+          button.dataset.saving = "true";
           try {
             const session = requireActiveSession();
+            showToast("Excluindo projeto da planilha...");
             await apiRequest("deleteProject", { projectId: project.id }, session.token, 45000);
             projects = projects.filter(item => String(item.id) !== String(project.id));
             persistProjects();
             renderProjects();
-            showToast("Projeto excluído da tela e da planilha.");
+            showToast("Projeto excluído do sistema e da planilha.");
             syncProjectsInBackground(session);
           } catch (error) {
             showToast(error.message || "Não foi possível excluir o projeto da planilha.");
-          } finally { button.disabled = false; }
+          } finally {
+            button.disabled = false;
+            delete button.dataset.saving;
+          }
         });
       });
       list.querySelectorAll(".registration-item").forEach(item => {
@@ -10400,7 +10486,7 @@
 
       // Libera a interface assim que a autenticação retorna; os dados já vêm no mesmo pacote.
       loginScreen.hidden = true;
-      document.body.classList.remove("auth-pending");
+      document.body.classList.remove("auth-pending", "session-checking");
 
       try {
         if (bootstrapResult?.projects) applyBootstrapData(bootstrapResult);
@@ -10421,6 +10507,7 @@
         localStorage.removeItem(CSC_SESSION_KEY);
         loginScreen.hidden = false;
         document.body.classList.add("auth-pending");
+        document.body.classList.remove("session-checking");
         return;
       }
       try {
@@ -10432,6 +10519,7 @@
         localStorage.removeItem(CSC_SESSION_KEY);
         loginScreen.hidden = false;
         document.body.classList.add("auth-pending");
+        document.body.classList.remove("session-checking");
         loginError.textContent = "Sua sessão expirou. Entre novamente.";
       }
     }
@@ -10467,6 +10555,7 @@
       userSwitcher.classList.remove("open");
       loginScreen.hidden = false;
       document.body.classList.add("auth-pending");
+      document.body.classList.remove("session-checking");
       loginEmail.value = currentUser?.email || "";
       loginPassword.value = "";
       loginError.textContent = "";
