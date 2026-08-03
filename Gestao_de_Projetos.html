@@ -7,7 +7,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <title>CSC Gestão de Projetos | v79</title>
+  <title>CSC Gestão de Projetos | v81</title>
   <style>
     :root {
       --bg: #030a12;
@@ -7258,16 +7258,16 @@
     .permission-summary > div { padding:13px 14px; border:1px solid rgba(48,143,174,.18); border-radius:12px; background:rgba(232,241,245,.76); }
     .permission-summary strong { display:block; color:#1e3b4b; font-size:.82rem; margin-bottom:4px; }
     .permission-summary span { display:block; color:#617987; font-size:.72rem; line-height:1.45; }
-    .system-users-list { display:grid; gap:9px; }
-    .system-user-item { display:grid; grid-template-columns:38px minmax(0,1fr) auto auto; gap:11px; align-items:center; padding:11px 13px; border:1px solid rgba(44,132,165,.16); border-radius:12px; background:rgba(239,246,249,.9); }
+    .system-users-list { display:grid; gap:10px; }
+    .system-user-item { display:grid; grid-template-columns:42px minmax(0,1fr) auto auto; gap:13px; align-items:center; padding:13px 14px; border:1px solid rgba(44,132,165,.16); border-radius:14px; background:rgba(239,246,249,.9); }
     .system-user-item.inactive { opacity:.55; }
     .system-user-info { min-width:0; }
-    .system-user-info strong { display:block; color:#203a49; font-size:.8rem; }
-    .system-user-info span { display:block; color:#6b818e; font-size:.68rem; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .permission-pill { min-height:25px; display:inline-flex; align-items:center; padding:0 9px; border-radius:999px; font-size:.65rem; font-weight:750; border:1px solid rgba(47,138,164,.25); color:#297d96; background:rgba(222,238,244,.9); }
+    .system-user-info strong { display:block; color:#203a49; font-size:.92rem; line-height:1.25; font-weight:800; }
+    .system-user-info span { display:block; color:#5f7683; font-size:.76rem; margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .permission-pill { min-height:28px; display:inline-flex; align-items:center; padding:0 10px; border-radius:999px; font-size:.70rem; font-weight:800; border:1px solid rgba(47,138,164,.25); color:#297d96; background:rgba(222,238,244,.9); }
     .permission-pill.viewer { color:#687784; border-color:rgba(104,119,132,.22); background:rgba(232,236,239,.92); }
-    .user-toggle-btn { min-height:30px; padding:0 10px; border-radius:8px; border:1px solid rgba(198,63,75,.22); color:#b44751; background:rgba(249,237,239,.92); font-size:.66rem; font-weight:700; }
-    .user-admin-notice { padding:12px; border-radius:10px; color:#687b87; background:rgba(230,237,241,.8); font-size:.72rem; }
+    .user-toggle-btn { min-height:32px; padding:0 11px; border-radius:9px; border:1px solid rgba(198,63,75,.22); color:#b44751; background:rgba(249,237,239,.92); font-size:.71rem; font-weight:800; }
+    .user-admin-notice { padding:12px; border-radius:10px; color:#687b87; background:rgba(230,237,241,.8); font-size:.76rem; }
     .user-modal-card {
       max-width: 760px;
       border-radius: 24px;
@@ -7768,6 +7768,28 @@
       }
       .milestone-summary-content { padding: 18px; }
     }
+  </style>
+
+
+  <style>
+    /* ===== v81: edição e exclusão de usuários ===== */
+    .system-user-actions { display:flex; align-items:center; gap:8px; }
+    .user-action-btn { width:34px; height:34px; display:grid; place-items:center; border-radius:10px; border:1px solid rgba(47,138,164,.20); background:rgba(242,248,251,.94); color:#287f9d; transition:.18s ease; }
+    .user-action-btn:hover { transform:translateY(-1px); border-color:rgba(47,138,164,.38); box-shadow:0 8px 18px rgba(40,108,136,.10); }
+    .user-action-btn.delete { color:#c34b56; border-color:rgba(195,75,86,.20); background:rgba(252,242,244,.94); }
+    .user-action-btn svg { width:15px; height:15px; }
+    .user-edit-password-note { grid-column:1/-1; margin:-6px 0 0; color:#708792; font-size:.68rem; line-height:1.4; }
+    .user-delete-card { width:min(470px,100%); }
+    .user-delete-body { padding:22px 24px 10px; color:#37515f; font-size:.82rem; line-height:1.55; }
+    .user-delete-name { font-weight:850; color:#1d3948; }
+    .user-delete-warning { margin-top:12px; padding:12px 13px; border-radius:12px; color:#a53f49; background:rgba(250,232,235,.85); border:1px solid rgba(198,63,75,.16); }
+    .user-delete-actions { display:flex; justify-content:flex-end; gap:10px; padding:12px 24px 24px; }
+    .user-delete-actions .btn { min-width:120px; }
+    body:not([data-theme="light"]) .user-action-btn { background:rgba(7,25,39,.92); color:#72d4e8; border-color:rgba(65,190,233,.14); }
+    body:not([data-theme="light"]) .user-action-btn.delete { color:#ff7c86; background:rgba(56,18,24,.72); border-color:rgba(255,75,85,.20); }
+    body:not([data-theme="light"]) .user-delete-body { color:#cbd8df; }
+    body:not([data-theme="light"]) .user-delete-name { color:#f1f7f9; }
+    @media(max-width:760px){ .system-user-item{grid-template-columns:42px minmax(0,1fr) auto!important} .permission-pill{grid-column:2;justify-self:start} .system-user-actions{grid-column:3;grid-row:1/3} }
   </style>
 
 </head>
@@ -8296,10 +8318,6 @@
               <button id="openUserModal" class="btn primary" type="button"><svg><use href="#i-user-plus"/></svg>Cadastrar usuário</button>
             </div>
             <div class="settings-card-body user-management-body">
-              <div class="permission-summary">
-                <div><strong>Visualizador</strong><span>Acessa projetos, notas, calendário e histórico, sem criar ou participar de projetos.</span></div>
-                <div><strong>Participante</strong><span>Pode criar projetos, solicitar participação e atualizar projetos em que foi aprovado.</span></div>
-              </div>
               <div id="systemUsersList" class="system-users-list"></div>
               <div id="userAdminNotice" class="user-admin-notice" hidden>Somente administradores podem cadastrar ou alterar usuários.</div>
             </div>
@@ -8333,18 +8351,26 @@
   <div id="userModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="userModalTitle">
     <div class="modal user-modal-card">
       <div class="modal-header">
-        <div><h2 id="userModalTitle">Cadastrar novo usuário</h2><p class="modal-helper">Defina os dados de acesso e o nível de permissão.</p></div>
+        <div><h2 id="userModalTitle">Cadastrar novo usuário</h2><p id="userModalHelper" class="modal-helper">Defina os dados de acesso e o nível de permissão.</p></div>
         <button id="closeUserModal" class="modal-close" type="button" aria-label="Fechar"><svg width="18" height="18"><use href="#i-x"/></svg></button>
       </div>
       <div class="user-form-grid">
         <label class="form-field"><span>Nome completo</span><input id="newUserName" type="text" placeholder="Ex.: Ana Souza" autocomplete="off"></label>
         <label class="form-field"><span>E-mail ou usuário</span><input id="newUserEmail" type="email" placeholder="usuario@univale.com.br" autocomplete="off"></label>
-        <label class="form-field"><span>Senha inicial</span><input id="newUserPassword" type="password" placeholder="Mínimo de 8 caracteres" autocomplete="new-password"></label>
+        <label class="form-field"><span id="userPasswordLabel">Senha inicial</span><input id="newUserPassword" type="password" placeholder="Mínimo de 8 caracteres" autocomplete="new-password"></label>
         <label class="form-field"><span>Nível de permissão</span><select id="newUserPermission"><option value="visualizador">Visualizador</option><option value="participante">Participante</option></select></label>
-        <label class="form-field user-role-field"><span>Cargo / função</span><input id="newUserRole" type="text" placeholder="Ex.: Analista de Projetos"></label>
+        <label class="form-field user-role-field"><span>Cargo / função</span><input id="newUserRole" type="text" placeholder="Ex.: Analista de Projetos"></label><p id="userEditPasswordNote" class="user-edit-password-note" hidden>Deixe a senha em branco para manter a senha atual.</p>
       </div>
       <div id="userValidationBox" class="validation-box" hidden></div>
       <div class="modal-actions"><button id="cancelUserModal" class="btn" type="button">Cancelar</button><button id="saveUser" class="btn primary" type="button"><svg><use href="#i-user-plus"/></svg>Cadastrar usuário</button></div>
+    </div>
+  </div>
+
+  <div id="userDeleteModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="userDeleteTitle">
+    <div class="modal user-delete-card">
+      <div class="modal-header"><div><h2 id="userDeleteTitle">Excluir usuário</h2></div><button id="closeUserDeleteModal" class="modal-close" type="button" aria-label="Fechar"><svg width="18" height="18"><use href="#i-x"/></svg></button></div>
+      <div class="user-delete-body">Deseja excluir o usuário <span id="userDeleteName" class="user-delete-name">—</span>?<div class="user-delete-warning">O usuário perderá o acesso ao sistema e esta ação não poderá ser desfeita.</div><div id="userDeleteValidation" class="validation-box" hidden></div></div>
+      <div class="user-delete-actions"><button id="cancelUserDelete" class="btn" type="button">Cancelar</button><button id="confirmUserDelete" class="btn primary" type="button">Excluir usuário</button></div>
     </div>
   </div>
 
@@ -10336,20 +10362,42 @@
 
     const userModal = document.getElementById("userModal");
     const userValidationBox = document.getElementById("userValidationBox");
-    function closeUserRegistrationModal() {
-      userModal.classList.remove("open");
-      userValidationBox.hidden = true;
-      userValidationBox.textContent = "";
-    }
-    document.getElementById("openUserModal").addEventListener("click", () => {
-      if (!isCurrentUserAdmin()) return showToast("Somente administradores podem cadastrar usuários.");
+    let editingUserId = null;
+    function closeUserRegistrationModal() { userModal.classList.remove("open"); userValidationBox.hidden = true; userValidationBox.textContent = ""; editingUserId = null; }
+    function openCreateUserModal() {
+      if (!isCurrentUserAdmin()) return showToast("Acesso restrito ao administrador.");
+      editingUserId = null;
       ["newUserName","newUserEmail","newUserPassword","newUserRole"].forEach(id => document.getElementById(id).value = "");
       document.getElementById("newUserPermission").value = "visualizador";
+      document.getElementById("userModalTitle").textContent = "Cadastrar novo usuário";
+      document.getElementById("userModalHelper").textContent = "Defina os dados de acesso e o nível de permissão.";
+      document.getElementById("userPasswordLabel").textContent = "Senha inicial";
+      document.getElementById("userEditPasswordNote").hidden = true;
+      document.getElementById("saveUser").innerHTML = `<svg><use href="#i-user-plus"/></svg>Cadastrar usuário`;
       userModal.classList.add("open");
-    });
+    }
+    function openEditUserModal(userId) {
+      if (!isCurrentUserAdmin()) return showToast("Acesso restrito ao administrador.");
+      const user = users.find(item => String(item.id) === String(userId));
+      if (!user) return showToast("Usuário não encontrado.");
+      editingUserId = user.id;
+      document.getElementById("newUserName").value = user.name || "";
+      document.getElementById("newUserEmail").value = user.email || "";
+      document.getElementById("newUserPassword").value = "";
+      document.getElementById("newUserRole").value = user.role || "";
+      document.getElementById("newUserPermission").value = user.permission === "visualizador" ? "visualizador" : "participante";
+      document.getElementById("userModalTitle").textContent = "Editar usuário";
+      document.getElementById("userModalHelper").textContent = "Atualize os dados do usuário e, se necessário, defina uma nova senha.";
+      document.getElementById("userPasswordLabel").textContent = "Nova senha";
+      document.getElementById("userEditPasswordNote").hidden = false;
+      document.getElementById("saveUser").innerHTML = `<svg><use href="#i-edit"/></svg>Salvar alterações`;
+      userModal.classList.add("open");
+    }
+    document.getElementById("openUserModal").addEventListener("click", openCreateUserModal);
     document.getElementById("closeUserModal").addEventListener("click", closeUserRegistrationModal);
     document.getElementById("cancelUserModal").addEventListener("click", closeUserRegistrationModal);
     userModal.addEventListener("click", event => { if (event.target === userModal) closeUserRegistrationModal(); });
+
     document.getElementById("saveUser").addEventListener("click", async () => {
       const name = document.getElementById("newUserName").value.trim();
       const email = document.getElementById("newUserEmail").value.trim().toLowerCase();
@@ -10359,30 +10407,29 @@
       let error = "";
       if (name.length < 3) error = "Informe o nome completo do usuário.";
       else if (!/^\S+@\S+\.\S+$/.test(email)) error = "Informe um e-mail válido.";
-      else if (password.length < 8) error = "A senha inicial deve ter pelo menos 8 caracteres.";
-      else if (users.some(user => user.email.toLowerCase() === email || user.name.toLowerCase() === name.toLowerCase())) error = "Já existe um usuário com este nome ou e-mail.";
+      else if (!editingUserId && password.length < 8) error = "A senha inicial deve ter pelo menos 8 caracteres.";
+      else if (editingUserId && password && password.length < 8) error = "A nova senha deve ter pelo menos 8 caracteres.";
+      else if (users.some(user => String(user.id) !== String(editingUserId) && (String(user.email || "").toLowerCase() === email || String(user.name || "").toLowerCase() === name.toLowerCase()))) error = "Já existe um usuário com este nome ou e-mail.";
       if (error) { userValidationBox.textContent = error; userValidationBox.hidden = false; return; }
-
       const button = document.getElementById("saveUser");
       button.disabled = true;
+      const originalHtml = button.innerHTML;
+      button.textContent = editingUserId ? "Salvando..." : "Cadastrando...";
       try {
         const session = requireActiveSession();
-        const result = await apiRequest("createUser", {
-          user: { nome: name, email, senha: password, cargo: role, permissao: permission }
-        }, session.token);
-
-        users.push(mapApiUser(result.user));
-        persistUsers();
-        refreshUserSwitcher();
-        renderSystemUsers();
-        closeUserRegistrationModal();
-        showToast("Usuário cadastrado na planilha e já pode fazer login.");
-      } catch (apiError) {
-        userValidationBox.textContent = apiError.message || "Não foi possível cadastrar o usuário.";
-        userValidationBox.hidden = false;
-      } finally {
-        button.disabled = false;
-      }
+        const payload = { nome: name, email, cargo: role, permissao: permission };
+        if (password) payload.senha = password;
+        const wasEditing = Boolean(editingUserId);
+        const targetId = editingUserId;
+        const result = wasEditing ? await apiRequest("updateUser", { userId: targetId, patch: payload }, session.token) : await apiRequest("createUser", { user: Object.assign({}, payload, { senha: password }) }, session.token);
+        const updatedUser = mapApiUser(result.user || result.usuario || payload);
+        const existingIndex = users.findIndex(user => String(user.id) === String(targetId || updatedUser.id));
+        if (existingIndex >= 0) users.splice(existingIndex, 1, updatedUser); else users.push(updatedUser);
+        if (currentUser && String(currentUser.id) === String(updatedUser.id)) currentUser = updatedUser;
+        persistUsers(); refreshUserSwitcher(); renderSystemUsers(); renderCurrentUser(); closeUserRegistrationModal();
+        showToast(wasEditing ? "Usuário atualizado com sucesso." : "Usuário cadastrado com sucesso.");
+      } catch (apiError) { userValidationBox.textContent = apiError?.message || "Não foi possível salvar o usuário."; userValidationBox.hidden = false; }
+      finally { button.disabled = false; button.innerHTML = originalHtml; }
     });
 
     const profileCard = document.getElementById("profileCard");
@@ -10404,34 +10451,44 @@
       const button = document.getElementById("openUserModal");
       const notice = document.getElementById("userAdminNotice");
       if (!list) return;
-      if (button) button.hidden = !isCurrentUserAdmin();
-      if (notice) notice.hidden = isCurrentUserAdmin();
+      const isAdmin = isCurrentUserAdmin();
+      if (button) button.hidden = !isAdmin;
+      if (notice) notice.hidden = isAdmin;
+      if (!isAdmin) { list.innerHTML = ""; return; }
       list.innerHTML = users.map(user => `
         <div class="system-user-item ${user.active === false ? "inactive" : ""}">
           <div class="avatar small ${escapeHtml(user.avatar || "a1")}">${escapeHtml(user.initials || initialsForName(user.name))}</div>
           <div class="system-user-info"><strong>${escapeHtml(user.name)}</strong><span>${escapeHtml(user.email || "Sem e-mail informado")} · ${escapeHtml(user.role || "Sem função")}</span></div>
           <span class="permission-pill ${user.permission === "visualizador" ? "viewer" : "participant"}">${user.isAdmin ? "Administrador" : user.permission === "visualizador" ? "Visualizador" : "Participante"}</span>
-          ${isCurrentUserAdmin() && !user.isAdmin ? `<button class="user-toggle-btn" type="button" data-user-toggle="${escapeHtml(user.name)}">${user.active === false ? "Ativar" : "Desativar"}</button>` : ""}
+          <div class="system-user-actions"><button class="user-action-btn" type="button" data-user-edit="${escapeHtml(user.id)}" aria-label="Editar ${escapeHtml(user.name)}" title="Editar usuário"><svg><use href="#i-edit"/></svg></button>${user.isAdmin ? "" : `<button class="user-action-btn delete" type="button" data-user-delete="${escapeHtml(user.id)}" aria-label="Excluir ${escapeHtml(user.name)}" title="Excluir usuário"><svg><use href="#i-trash"/></svg></button>`}</div>
         </div>`).join("");
-      list.querySelectorAll("[data-user-toggle]").forEach(button => button.addEventListener("click", async () => {
-        const user = users.find(item => item.name === button.dataset.userToggle);
-        if (!user) return;
-        const nextActive = user.active === false;
-        button.disabled = true;
-        try {
-          const session = requireActiveSession();
-          await apiRequest("setUserActive", { userId: user.id, active: nextActive }, session.token);
-          user.active = nextActive;
-          persistUsers();
-          refreshUserSwitcher();
-          renderSystemUsers();
-          showToast(`Usuário ${user.active ? "ativado" : "desativado"}.`);
-        } catch (error) {
-          showToast(error.message || "Não foi possível alterar o usuário.");
-          button.disabled = false;
-        }
-      }));
+      list.querySelectorAll("[data-user-edit]").forEach(btn => btn.addEventListener("click", () => openEditUserModal(btn.dataset.userEdit)));
+      list.querySelectorAll("[data-user-delete]").forEach(btn => btn.addEventListener("click", () => openUserDeleteModal(btn.dataset.userDelete)));
     }
+
+
+    const userDeleteModal = document.getElementById("userDeleteModal");
+    const userDeleteName = document.getElementById("userDeleteName");
+    const userDeleteValidation = document.getElementById("userDeleteValidation");
+    let pendingUserDeleteId = null;
+    function openUserDeleteModal(userId) {
+      if (!isCurrentUserAdmin()) return showToast("Acesso restrito ao administrador.");
+      const user = users.find(item => String(item.id) === String(userId));
+      if (!user) return showToast("Usuário não encontrado.");
+      if (user.isAdmin) return showToast("O usuário administrador não pode ser excluído.");
+      pendingUserDeleteId = user.id; userDeleteName.textContent = user.name; userDeleteValidation.hidden = true; userDeleteValidation.textContent = ""; openDialog(userDeleteModal);
+    }
+    function closeUserDeleteModal() { pendingUserDeleteId = null; closeDialog(userDeleteModal); }
+    document.getElementById("closeUserDeleteModal").addEventListener("click", closeUserDeleteModal);
+    document.getElementById("cancelUserDelete").addEventListener("click", closeUserDeleteModal);
+    userDeleteModal.addEventListener("click", event => { if (event.target === userDeleteModal) closeUserDeleteModal(); });
+    document.getElementById("confirmUserDelete").addEventListener("click", async () => {
+      if (!pendingUserDeleteId) return;
+      const button = document.getElementById("confirmUserDelete"); button.disabled = true; button.textContent = "Excluindo...";
+      try { const session = requireActiveSession(); const targetId = pendingUserDeleteId; await apiRequest("deleteUser", { userId: targetId }, session.token); users = users.filter(user => String(user.id) !== String(targetId)); persistUsers(); refreshUserSwitcher(); renderSystemUsers(); closeUserDeleteModal(); showToast("Usuário excluído com sucesso."); }
+      catch (error) { userDeleteValidation.textContent = error?.message || "Não foi possível excluir o usuário."; userDeleteValidation.hidden = false; }
+      finally { button.disabled = false; button.textContent = "Excluir usuário"; }
+    });
 
     function refreshUserSwitcher() {
       currentUserSelect.innerHTML = users.filter(user => user.active !== false).map(user =>
@@ -10447,6 +10504,9 @@
       });
       const cadastrosButton = document.querySelector('[data-page="Cadastros"]');
       if (cadastrosButton) cadastrosButton.classList.toggle("permission-readonly", !canCreate);
+      const settingsButton = document.querySelector('.nav-button[data-section="Configurações"]');
+      if (settingsButton) settingsButton.hidden = !isCurrentUserAdmin();
+      if (!isCurrentUserAdmin() && document.getElementById("settingsPage")?.classList.contains("active")) showPage("Visão Geral");
       renderSystemUsers();
     }
 
@@ -10659,6 +10719,7 @@
     });
 
     function showPage(section) {
+      if (section === "Configurações" && !isCurrentUserAdmin()) { showToast("Acesso restrito ao administrador."); section = "Visão Geral"; }
       const pages = {
         "Visão Geral": document.getElementById("overviewPage"),
         "Cadastros": document.getElementById("cadastrosPage"),
@@ -10788,7 +10849,7 @@
         const section = button.dataset.section;
 
         if (!["Visão Geral", "Cadastros", "Calendário", "Configurações"].includes(section)) return;
-
+        if (section === "Configurações" && !isCurrentUserAdmin()) return showToast("Acesso restrito ao administrador.");
         document.querySelectorAll(".nav-button").forEach(item => item.classList.remove("active"));
         button.classList.add("active");
         showPage(section);
@@ -10821,6 +10882,7 @@
       if (updateModal.classList.contains("open")) closeDialog(updateModal);
       if (historyModal.classList.contains("open")) closeDialog(historyModal);
       if (milestoneSummaryModal.classList.contains("open")) closeDialog(milestoneSummaryModal);
+      if (userDeleteModal.classList.contains("open")) closeUserDeleteModal();
       if (notificationModal.classList.contains("open")) closeDialog(notificationModal);
       if (requestModal.classList.contains("open")) closeDialog(requestModal);
       if (document.querySelector(".registration-form-panel")?.classList.contains("open")) closeRegistrationModal();
@@ -11051,7 +11113,7 @@
     const WRITE_ACTIONS = new Set([
       "createProject", "updateProject", "deleteProject", "addUpdate",
       "addMember", "removeMember", "transferOwner",
-      "requestJoin", "decideRequest", "createUser", "setUserActive"
+      "requestJoin", "decideRequest", "createUser", "updateUser", "deleteUser", "setUserActive"
     ]);
 
     function handleExpiredSession(message) {
