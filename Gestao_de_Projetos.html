@@ -800,29 +800,60 @@
     .status {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      min-height: 26px;
-      border-radius: 7px;
-      padding: 0 9px;
-      font-size: .66rem;
-      white-space: nowrap;
-      border: 1px solid currentColor;
-      background: rgba(0,0,0,.13);
-    }
-
-    .status::before {
-      content: "";
-      width: 5px;
-      height: 5px;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border: 0;
       border-radius: 50%;
-      background: currentColor;
-      box-shadow: 0 0 8px currentColor;
+      background: transparent;
+      color: inherit;
+      vertical-align: middle;
     }
 
-    .status.andamento { color: #19cbe9; }
-    .status.pausado { color: var(--orange); }
-    .status.atrasado { color: var(--red); }
-    .status.concluido { color: #128a5a; }
+    .status::before { display: none; }
+
+    .status-icon {
+      width: 30px;
+      height: 30px;
+      display: block;
+      overflow: visible;
+      filter: drop-shadow(0 2px 5px rgba(32, 91, 117, .16));
+    }
+
+    .status-icon .status-disc {
+      fill: currentColor;
+      opacity: .14;
+    }
+
+    .status-icon .status-ring {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.5;
+    }
+
+    .status-icon .status-mark {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .status-icon .status-fill { fill: currentColor; }
+
+    .status.andamento { color: #079bc6; }
+    .status.pausado { color: #e8a300; }
+    .status.atrasado { color: #dc3545; }
+    .status.concluido { color: #149447; }
+    .status.nao-iniciado { color: #9ba7af; }
+
+    .status.andamento .status-spinner {
+      transform-origin: 16px 16px;
+      animation: statusSpin 1.5s linear infinite;
+    }
+
+    @keyframes statusSpin { to { transform: rotate(360deg); } }
 
     .table-footer {
       min-height: 50px;
@@ -8205,9 +8236,50 @@
       "Em andamento": "andamento",
       "Pausado": "pausado",
       "Concluído": "concluido",
+      "Não iniciado": "nao-iniciado",
       "Em atraso": "atrasado",
       "Cancelado": "cancelado"
     };
+
+    function statusIconHtml(status) {
+      const label = escapeHtml(status || "Em andamento");
+      const icons = {
+        "Concluído": `
+          <svg class="status-icon" viewBox="0 0 32 32" aria-hidden="true">
+            <circle class="status-disc" cx="16" cy="16" r="13"/>
+            <circle class="status-ring" cx="16" cy="16" r="12.2"/>
+            <path class="status-mark" d="M9.5 16.2l4.1 4.2L23 11"/>
+          </svg>`,
+        "Em andamento": `
+          <svg class="status-icon" viewBox="0 0 32 32" aria-hidden="true">
+            <circle class="status-disc" cx="16" cy="16" r="13"/>
+            <g class="status-spinner">
+              <path class="status-ring" stroke-linecap="round" d="M16 4a12 12 0 1 1-8.5 3.5"/>
+              <path class="status-fill" d="M6.4 4.7l4.9.8-3.1 3.8z"/>
+            </g>
+          </svg>`,
+        "Pausado": `
+          <svg class="status-icon" viewBox="0 0 32 32" aria-hidden="true">
+            <circle class="status-disc" cx="16" cy="16" r="13"/>
+            <circle class="status-ring" cx="16" cy="16" r="12.2"/>
+            <rect class="status-fill" x="11" y="10" width="3.4" height="12" rx="1"/>
+            <rect class="status-fill" x="17.6" y="10" width="3.4" height="12" rx="1"/>
+          </svg>`,
+        "Não iniciado": `
+          <svg class="status-icon" viewBox="0 0 32 32" aria-hidden="true">
+            <circle class="status-disc" cx="16" cy="16" r="13"/>
+            <circle class="status-ring" cx="16" cy="16" r="11.5"/>
+          </svg>`,
+        "Em atraso": `
+          <svg class="status-icon" viewBox="0 0 32 32" aria-hidden="true">
+            <circle class="status-disc" cx="16" cy="16" r="13"/>
+            <circle class="status-ring" cx="16" cy="16" r="12.2"/>
+            <path class="status-mark" d="M16 9.5v8.2"/>
+            <circle class="status-fill" cx="16" cy="22.4" r="1.5"/>
+          </svg>`
+      };
+      return `<span class="status ${statusClassMap[status] || "andamento"}" title="${label}" aria-label="Status: ${label}">${icons[status] || icons["Em andamento"]}</span>`;
+    }
 
     const tableBody = document.getElementById("projectTableBody");
     const emptyState = document.getElementById("emptyState");
@@ -8465,10 +8537,7 @@
             </div>
           </td>
           <td>
-            <span class="status ${statusClassMap[project.status] || "andamento"}"
-              title="${project.status === "Em atraso" ? "Status identificado automaticamente: a data final do projeto já foi ultrapassada." : ""}">
-              ${escapeHtml(project.status)}
-            </span>
+            ${statusIconHtml(project.status)}
           </td>
           <td class="notes-cell">
             <button class="notes-button" type="button" data-history-id="${project.id}" aria-label="Abrir histórico de ${escapeHtml(project.name)}" title="Ver notas e atualizações">
@@ -8524,7 +8593,7 @@
     }
 
     function getStatusCounts() {
-      const order = ["Em andamento", "Pausado", "Concluído", "Em atraso"];
+      const order = ["Não iniciado", "Em andamento", "Pausado", "Concluído", "Em atraso"];
       const counts = new Map(order.map(status => [status, 0]));
 
       projects.forEach(project => {
