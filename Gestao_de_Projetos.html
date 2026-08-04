@@ -7,7 +7,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <title>CSC Gestão de Projetos | v81</title>
+  <title>CSC Gestão de Projetos | v82</title>
   <style>
     :root {
       --bg: #030a12;
@@ -434,6 +434,12 @@
     .avatar.a4 { background: linear-gradient(135deg, #1e7e58, #2aa67f); }
     .avatar.a5 { background: linear-gradient(135deg, #8f651e, #d19c36); }
     .avatar.a6 { background: linear-gradient(135deg, #743f68, #be6f9f); }
+    .avatar.a7 { background: linear-gradient(135deg, #1f5d9e, #3f8ed8); }
+    .avatar.a8 { background: linear-gradient(135deg, #9b3f35, #e07062); }
+    .avatar.a9 { background: linear-gradient(135deg, #3f6f24, #75ad43); }
+    .avatar.a10 { background: linear-gradient(135deg, #7a4b12, #e0a33c); }
+    .avatar.a11 { background: linear-gradient(135deg, #3f4e95, #7386db); }
+    .avatar.a12 { background: linear-gradient(135deg, #9a2860, #dc5c96); }
 
 
     [hidden] {
@@ -7938,8 +7944,8 @@
 
       <nav class="nav" aria-label="Navegação principal">
         <button class="nav-button active" data-section="Visão Geral"><svg><use href="#i-grid"/></svg><span>Visão Geral</span></button>
-        <button class="nav-button" data-section="Cadastros"><svg><use href="#i-folder"/></svg><span>Cadastros</span></button>
         <button class="nav-button" data-section="Calendário"><svg><use href="#i-calendar"/></svg><span>Calendário</span></button>
+        <button class="nav-button" data-section="Cadastros"><svg><use href="#i-folder"/></svg><span>Cadastros</span></button>
         <button class="nav-button" data-section="Configurações"><svg><use href="#i-settings"/></svg><span>Configurações</span></button>
       </nav>
 
@@ -8613,7 +8619,7 @@
     } catch (error) {
       users = [...defaultUsers];
     }
-    users = users.map((user, index) => ({ active: true, permission: user.isAdmin ? "participante" : (user.permission || "participante"), email: user.email || "", avatar: user.avatar || `a${(index % 5) + 1}`, ...user }));
+    users = users.map((user, index) => ({ active: true, permission: user.isAdmin ? "participante" : (user.permission || "participante"), email: user.email || "", avatar: user.avatar || `a${(index % 12) + 1}`, ...user }));
     let currentUser = users.find(user => user.name === localStorage.getItem(USER_KEY) && user.active !== false) || users.find(user => user.active !== false) || users[0];
     let projects = [];
 
@@ -9121,7 +9127,11 @@
 
     function renderOwnerPie() {
       const ownerData = getOwnerCounts().slice(0, 8);
-      const avatarColorMap = { a1: "#0d8b9f", a2: "#a96447", a3: "#6d4ba5", a4: "#24936d", a5: "#b6812a", a6: "#98577f" };
+      const avatarColorMap = {
+        a1: "#0d8b9f", a2: "#a96447", a3: "#6d4ba5", a4: "#24936d",
+        a5: "#b6812a", a6: "#98577f", a7: "#2f75b8", a8: "#c85649",
+        a9: "#5f9135", a10: "#bd7f21", a11: "#596bb8", a12: "#b83f78"
+      };
       const ownerPalette = ownerData.map(([owner]) => avatarColorMap[avatarForName(owner).avatar] || "#2f95ae");
 
       renderPieChartBlock({
@@ -10422,9 +10432,12 @@
         const wasEditing = Boolean(editingUserId);
         const targetId = editingUserId;
         const result = wasEditing ? await apiRequest("updateUser", { userId: targetId, patch: payload }, session.token) : await apiRequest("createUser", { user: Object.assign({}, payload, { senha: password }) }, session.token);
-        const updatedUser = mapApiUser(result.user || result.usuario || payload);
+        let updatedUser = mapApiUser(result.user || result.usuario || payload);
         const existingIndex = users.findIndex(user => String(user.id) === String(targetId || updatedUser.id));
+        const previousUsers = [...users];
         if (existingIndex >= 0) users.splice(existingIndex, 1, updatedUser); else users.push(updatedUser);
+        users = assignDistinctAvatarColors(users, previousUsers);
+        updatedUser = users.find(user => String(user.id) === String(targetId || updatedUser.id)) || updatedUser;
         if (currentUser && String(currentUser.id) === String(updatedUser.id)) currentUser = updatedUser;
         persistUsers(); refreshUserSwitcher(); renderSystemUsers(); renderCurrentUser(); closeUserRegistrationModal();
         showToast(wasEditing ? "Usuário atualizado com sucesso." : "Usuário cadastrado com sucesso.");
@@ -10445,6 +10458,34 @@
     function initialsForName(name) {
       return String(name || "US").trim().split(/\s+/).slice(0, 2).map(part => part.charAt(0).toUpperCase()).join("") || "US";
     }
+
+    const AVATAR_CLASSES = Array.from({ length: 12 }, (_, index) => `a${index + 1}`);
+
+    function userIdentityKey(user) {
+      return String(user?.id || user?.email || user?.name || "").trim().toLowerCase();
+    }
+
+    function assignDistinctAvatarColors(userList, previousUsers = users) {
+      const previousColorByIdentity = new Map(
+        (Array.isArray(previousUsers) ? previousUsers : [])
+          .filter(user => userIdentityKey(user) && AVATAR_CLASSES.includes(user.avatar))
+          .map(user => [userIdentityKey(user), user.avatar])
+      );
+      const used = new Set();
+      return (Array.isArray(userList) ? userList : []).map(user => {
+        const identity = userIdentityKey(user);
+        let avatar = AVATAR_CLASSES.includes(user.avatar) ? user.avatar : previousColorByIdentity.get(identity);
+        if (!avatar || used.has(avatar)) avatar = AVATAR_CLASSES.find(color => !used.has(color));
+        if (!avatar) {
+          const seed = [...identity].reduce((total, char) => total + char.charCodeAt(0), 0);
+          avatar = AVATAR_CLASSES[seed % AVATAR_CLASSES.length];
+        }
+        used.add(avatar);
+        return { ...user, avatar };
+      });
+    }
+
+    users = assignDistinctAvatarColors(users, users);
 
     function renderSystemUsers() {
       const list = document.getElementById("systemUsersList");
@@ -11105,7 +11146,7 @@
         isAdmin: Boolean(user?.administrador ?? user?.isAdmin),
         active: user?.ativo === undefined ? true : Boolean(user.ativo),
         initials: initialsForName(name),
-        avatar: "a2"
+        avatar: ""
       };
     }
 
@@ -11279,8 +11320,10 @@
       updateNotificationBadge();
 
       if (Array.isArray(result.users) && currentUser?.isAdmin) {
+        const previousUsers = [...users];
         users = result.users.map(mapApiUser);
         if (!users.some(user => user.id === currentUser.id)) users.unshift(currentUser);
+        users = assignDistinctAvatarColors(users, previousUsers);
         refreshUserSwitcher();
         renderSystemUsers();
       }
@@ -11311,8 +11354,10 @@
       if (!currentUser?.isAdmin) return;
       try {
         const result = await apiRequest("listUsers", {}, session.token);
+        const previousUsers = [...users];
         users = result.users.map(mapApiUser);
         if (!users.some(user => user.id === currentUser.id)) users.unshift(currentUser);
+        users = assignDistinctAvatarColors(users, previousUsers);
         refreshUserSwitcher();
         renderSystemUsers();
       } catch (error) {
@@ -11323,8 +11368,11 @@
     async function activateAuthenticatedSession(session, bootstrapResult = null) {
       const apiUser = bootstrapResult?.user || session.user;
       currentUser = mapApiUser(apiUser);
+      const previousUsers = [...users];
       const sameUserIndex = users.findIndex(user => user.email === currentUser.email);
       if (sameUserIndex >= 0) users[sameUserIndex] = currentUser; else users.unshift(currentUser);
+      users = assignDistinctAvatarColors(users, previousUsers);
+      currentUser = users.find(user => user.email === currentUser.email) || currentUser;
       localStorage.setItem(USER_KEY, currentUser.name);
       document.getElementById("sessionUserEmail").textContent = `${currentUser.email} · ${currentUser.isAdmin ? "Administrador" : currentUser.permission === "visualizador" ? "Visualizador" : "Participante"}`;
       renderCurrentUser();
