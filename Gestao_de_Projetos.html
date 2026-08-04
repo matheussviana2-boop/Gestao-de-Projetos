@@ -8711,9 +8711,20 @@
     const progressValue = document.getElementById("projectProgressValue");
     let toastTimer;
 
-    function persistProjects() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+    let persistTimer = null;
+    function flushProjectsCache() {
+      window.clearTimeout(persistTimer);
+      persistTimer = null;
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(projects)); }
+      catch (_) { /* cota do localStorage estourada: o cache local é só conveniência */ }
     }
+    function persistProjects() {
+      // JSON.stringify da base inteira bloqueia a thread principal. Agrupamos
+      // as gravações em vez de repetir a cada render/alteração.
+      window.clearTimeout(persistTimer);
+      persistTimer = window.setTimeout(flushProjectsCache, 600);
+    }
+    window.addEventListener("pagehide", () => { if (persistTimer) flushProjectsCache(); });
 
     function getProjectParticipants(project) {
       return [...new Set([project.owner, ...(project.members || [])].filter(Boolean))];
@@ -10957,14 +10968,35 @@
       throw new Error("Sua sessão expirou. Entre novamente.");
     }
 
-    let backgroundSyncTimer = null;
-    function syncProjectsInBackground(session) {
-      // Agrupa rajadas de alterações em uma única recarga.
-      window.clearTimeout(backgroundSyncTimer);
-      backgroundSyncTimer = window.setTimeout(() => {
-        loadBackendProjects(session).catch(error => console.warn("Sincronização em segundo plano falhou:", error));
-      }, 1200);
+    let lastSyncAt = Date.now();
+    let syncInFlight = false;
+    const MIN_SYNC_INTERVAL = 90000;
+
+    // O servidor já devolve o registro gravado, então recarregar a base inteira
+    // logo depois de cada gravação só atrasava a próxima ação (o Apps Script
+    // executa uma requisição por vez para o mesmo usuário). A recarga passa a
+    // acontecer quando realmente importa: aba reativada ou dados envelhecidos.
+    function runBackgroundSync(session, force) {
+      if (syncInFlight || document.hidden) return;
+      if (!force && Date.now() - lastSyncAt < MIN_SYNC_INTERVAL) return;
+      const active = session || readStoredSession();
+      if (!active || !active.token) return;
+      syncInFlight = true;
+      loadBackendProjects(active)
+        .then(() => { lastSyncAt = Date.now(); })
+        .catch(error => console.warn("Sincronização em segundo plano falhou:", error))
+        .finally(() => { syncInFlight = false; });
     }
+
+    function syncProjectsInBackground(session) {
+      // Acabamos de gravar e já aplicamos a resposta do servidor: o estado
+      // local está atualizado, não há motivo para baixar tudo de novo.
+      lastSyncAt = Date.now();
+    }
+
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) runBackgroundSync(null, false); });
+    window.addEventListener("focus", () => runBackgroundSync(null, false));
+    window.setInterval(() => runBackgroundSync(null, false), 120000);
 
     document.getElementById("saveProject").addEventListener("click", async () => {
       const saveButton = document.getElementById("saveProject");
@@ -11110,6 +11142,7 @@
     updateClock();
     setInterval(updateClock, 30000);
     setInterval(() => {
+      if (document.hidden) return;
       syncAllProjectDeadlines();
       renderProjects();
     }, 60000);
@@ -11297,6 +11330,7 @@
         progress: Number(project.progresso || 0),
         link: project.linkSistema || "",
         creator: project.criadoPor || owner,
+        updatedAt: project.atualizadoEm ? new Date(project.atualizadoEm).toLocaleString("pt-BR") : "",
         icon: "i-folder",
         orangeIcon: ["Pausado", "Em atraso"].includes(project.status),
         joinRequests: projectRequests,
@@ -11304,17 +11338,32 @@
       };
     }
 
+    function groupByProject(list) {
+      const map = new Map();
+      (list || []).forEach(item => {
+        const key = String(item.projetoId);
+        const bucket = map.get(key);
+        if (bucket) bucket.push(item); else map.set(key, [item]);
+      });
+      return map;
+    }
+
     function applyBootstrapData(result) {
       // Preserva o marcador "já li estas atualizações" de cada projeto.
       const readState = new Map(projects.map(project => [String(project.id), project.readUpdatesBy]));
+      // Indexa o histórico uma única vez. Antes cada projeto varria a lista
+      // completa de atualizações (custo projetos x atualizações).
+      const updatesByProject = groupByProject(result.updates);
+      const requestsByProject = groupByProject(result.requests);
       projects = (result.projects || []).map(project => {
-        const mapped = mapApiProject(project, result.updates || [], result.requests || []);
+        const key = String(project.id);
+        const mapped = mapApiProject(project, updatesByProject.get(key) || [], requestsByProject.get(key) || []);
         const previous = readState.get(String(mapped.id));
         if (previous && typeof previous === "object") mapped.readUpdatesBy = previous;
         return mapped;
       });
       syncAllProjectDeadlines();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+      persistProjects();
       renderAreaOptions();
       renderProjects();
       updateNotificationBadge();
