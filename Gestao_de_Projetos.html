@@ -8344,7 +8344,7 @@
       </div>
       <div class="system-confirm-body">
         <p>Deseja excluir definitivamente o projeto <span id="systemConfirmProject" class="system-confirm-project"></span>?</p>
-        <p class="system-confirm-warning">O registro será removido do sistema e da planilha. Esta ação não poderá ser desfeita.</p>
+        <p class="system-confirm-warning">O projeto será excluído definitivamente da base de dados. Esta ação não poderá ser desfeita.</p>
         <p id="systemConfirmStatus" class="form-feedback" hidden></p>
       </div>
       <div class="system-confirm-actions">
@@ -9311,7 +9311,7 @@
       const project = pendingDeleteProject;
       try {
         const session = requireActiveSession();
-        setDeleteModalBusy(true, "Excluindo o projeto da planilha. Aguarde...");
+        setDeleteModalBusy(true, "Excluindo o projeto da base de dados. Aguarde...");
 
         const result = await apiRequest("deleteProject", {
           projectId: project.id,
@@ -9327,10 +9327,10 @@
         setDeleteModalBusy(false, "");
         closeDialog(systemConfirmModal);
         pendingDeleteProject = null;
-        showToast("Projeto excluído da planilha e removido do sistema.");
+        showToast("Projeto excluído da base de dados.");
       } catch (error) {
         console.error("Falha ao excluir projeto:", error);
-        setDeleteModalBusy(false, error.message || "Não foi possível excluir o projeto da planilha.");
+        setDeleteModalBusy(false, error.message || "Não foi possível excluir o projeto da base de dados.");
       }
     }, true);
     document.addEventListener("keydown", event => {
@@ -11130,7 +11130,7 @@
         syncProjectsInBackground(session);
       } catch (error) {
         console.error("Falha ao salvar projeto:", error);
-        showToast(error.message || "Não foi possível salvar o projeto na planilha.");
+        showToast(error.message || "Não foi possível salvar o projeto na base de dados.");
       } finally {
         setProjectSaveState(false);
       }
@@ -11446,8 +11446,8 @@
           applyBootstrapData(result);
         }
       } catch (error) {
-        console.error("Falha ao carregar os dados da planilha:", error);
-        showToast("Login realizado, mas não foi possível atualizar os dados da planilha.");
+        console.error("Falha ao carregar os dados do sistema:", error);
+        showToast("Login realizado, mas não foi possível atualizar os dados do sistema.");
         renderProjects();
       }
     }
@@ -11472,7 +11472,7 @@
           handleExpiredSession("Sua sessão expirou. Entre novamente.");
         } else if (loginScreen.hidden) {
           console.warn("Não foi possível revalidar a sessão agora:", error);
-          showToast("Trabalhando com os dados salvos. Sem conexão com a planilha.");
+          showToast("Trabalhando com os dados salvos. Sem conexão com o servidor.");
         } else {
           loginError.textContent = error?.message || "Não foi possível conectar ao servidor.";
         }
