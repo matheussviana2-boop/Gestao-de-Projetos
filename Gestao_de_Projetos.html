@@ -3084,7 +3084,7 @@
     .gantt-grid {
       min-width: 1120px;
       display: grid;
-      grid-template-columns: 58px 290px repeat(12, minmax(62px, 1fr)) 132px 160px;
+      grid-template-columns: 58px 290px 132px 160px repeat(12, minmax(62px, 1fr));
       border: 1px solid rgba(65,190,233,.16);
       border-radius: 14px;
       overflow: hidden;
@@ -3137,7 +3137,7 @@
     .gantt-owner-cell { justify-content:center;text-align:center;font-weight:750;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
 
     .gantt-bar-layer {
-      grid-column: 3 / 15;
+      grid-column: 5 / 17;
       position: relative;
       min-height: 46px;
       border-right: 1px solid rgba(65,190,233,.11);
@@ -6087,6 +6087,26 @@
     #calendarPage .gantt-bar, #calendarPage .gantt-bar.paused, #calendarPage .gantt-bar.completed, #calendarPage .gantt-bar.delayed, #calendarPage .gantt-bar.cancelled,
     #calendarPage .calendar-progress-fill, #calendarPage .calendar-progress-fill.paused, #calendarPage .calendar-progress-fill.completed, #calendarPage .calendar-progress-fill.delayed, #calendarPage .calendar-progress-fill.cancelled { background:#2f9fc0 !important; }
 
+  
+    /* ===== v87: projetos futuros sem data ===== */
+    .project-no-date-field { margin-top: 2px; }
+    .project-no-date-option {
+      display:flex; align-items:flex-start; gap:12px; padding:13px 14px;
+      border:1px solid rgba(47,159,192,.24); border-radius:12px;
+      background:rgba(47,159,192,.06); cursor:pointer;
+    }
+    .project-no-date-option input { width:18px; height:18px; margin-top:2px; accent-color:#159bc1; }
+    .project-no-date-option span { display:flex; flex-direction:column; gap:3px; }
+    .project-no-date-option strong { font-size:.82rem; color:var(--text); }
+    .project-no-date-option small { font-size:.68rem; color:var(--muted); line-height:1.35; }
+    .field input:disabled, .field select:disabled { opacity:.58; cursor:not-allowed; }
+    .gantt-bar-layer.no-date { display:flex; align-items:center; justify-content:center; }
+    .gantt-no-date-label {
+      font-size:.62rem; font-weight:800; letter-spacing:.03em; color:#71808a;
+      padding:5px 10px; border-radius:999px; border:1px dashed rgba(113,128,138,.45);
+      background:rgba(113,128,138,.08); white-space:nowrap;
+    }
+
   </style>
 
   <style>
@@ -8310,6 +8330,16 @@
                 <input id="projectOwner" type="text" readonly />
                               </div>
 
+              <div class="field full project-no-date-field">
+                <label class="project-no-date-option" for="projectNoDate">
+                  <input id="projectNoDate" type="checkbox" />
+                  <span>
+                    <strong>Projeto futuro sem data definida</strong>
+                    <small>O projeto ficará no radar, com status “Não iniciado”, até que as datas sejam definidas.</small>
+                  </span>
+                </label>
+              </div>
+
               <div class="field">
                 <label for="projectStart">Data de início</label>
                 <input id="projectStart" type="date" />
@@ -8323,6 +8353,7 @@
               <div class="field registration-status-progress-field">
                 <label for="projectStatus">Status inicial</label>
                 <select id="projectStatus">
+                  <option>Não iniciado</option>
                   <option>Em andamento</option>
                   <option>Pausado</option>
                   <option>Concluído</option>
@@ -8737,7 +8768,8 @@
 
       return {
         ...project,
-        status: legacyStatusMap[project.status] || project.status || "Em andamento",
+        status: (!project.start && !project.end) ? "Não iniciado" : (legacyStatusMap[project.status] || project.status || "Em andamento"),
+        noDate: project.noDate === true || (!project.start && !project.end),
         creator: project.creator || project.owner || "Não informado",
         link: project.link || "",
       members: Array.isArray(project.members)
@@ -9742,6 +9774,7 @@
       project.description = mapped.description;
       project.start = mapped.start;
       project.end = mapped.end;
+      project.noDate = mapped.noDate;
       project.owner = mapped.owner;
       project.members = mapped.members;
       project.status = mapped.status;
@@ -10784,34 +10817,38 @@
         project,
         start: parseBrazilianDate(project.start),
         end: parseBrazilianDate(project.end)
-      })).filter(item => item.start && item.end && item.end >= startYear && item.start <= endYear)
-        .sort((a,b)=>a.start-b.start);
+      })).filter(item => (!item.start || !item.end) || (item.end >= startYear && item.start <= endYear))
+        .sort((a,b)=>{
+          const aNoDate = !a.start || !a.end;
+          const bNoDate = !b.start || !b.end;
+          if (aNoDate !== bNoDate) return aNoDate ? -1 : 1;
+          return aNoDate ? String(a.project.name).localeCompare(String(b.project.name), "pt-BR") : a.start-b.start;
+        });
 
       let html = `<div class="gantt-header">ID</div><div class="gantt-header project-head">Projeto</div>` +
-        months.map((month,index)=>`<div class="gantt-header month-${index+1}">${month}</div>`).join("") +
-        `<div class="gantt-header">Status</div><div class="gantt-header">Responsável</div>`;
+        `<div class="gantt-header">Status</div><div class="gantt-header">Responsável</div>` +
+        months.map((month,index)=>`<div class="gantt-header month-${index+1}">${month}</div>`).join("");
 
       if (!visible.length) {
-        html += `<div class="gantt-empty"><svg><use href="#i-calendar"/></svg><strong>Nenhum projeto neste ano</strong><span>Cadastre projetos com datas dentro de ${year} para preencher a agenda.</span></div>`;
+        html += `<div class="gantt-empty"><svg><use href="#i-calendar"/></svg><strong>Nenhum projeto neste ano</strong><span>Cadastre projetos ou marque-os como futuros sem data para preencher a agenda.</span></div>`;
         grid.innerHTML = html;
         return;
       }
 
       visible.forEach((item,index)=>{
-        const clippedStart = item.start < startYear ? startYear : item.start;
-        const clippedEnd = item.end > endYear ? endYear : item.end;
-        const left = Math.max(0, ((clippedStart-startYear)/duration)*100);
-        const width = Math.max(1.3, ((clippedEnd-clippedStart)/duration)*100);
+        const hasDates = Boolean(item.start && item.end);
+        const clippedStart = hasDates ? (item.start < startYear ? startYear : item.start) : null;
+        const clippedEnd = hasDates ? (item.end > endYear ? endYear : item.end) : null;
+        const left = hasDates ? Math.max(0, ((clippedStart-startYear)/duration)*100) : 0;
+        const width = hasDates ? Math.max(1.3, ((clippedEnd-clippedStart)/duration)*100) : 0;
         html += `
           <div class="gantt-cell gantt-row-id">${String(index+1).padStart(2,"0")}</div>
-          <div class="gantt-cell gantt-project" data-project-name="${escapeHtml(item.project.name)}" data-project-description="${escapeHtml(item.project.description || "Sem descrição cadastrada.")}" data-start-date="${escapeHtml(item.project.start)}" data-end-date="${escapeHtml(item.project.end)}" title="Clique para visualizar a descrição">
+          <div class="gantt-cell gantt-project" data-project-name="${escapeHtml(item.project.name)}" data-project-description="${escapeHtml(item.project.description || "Sem descrição cadastrada.")}" data-start-date="${escapeHtml(item.project.start || "Sem data definida")}" data-end-date="${escapeHtml(item.project.end || "Sem data definida")}" title="Clique para visualizar a descrição">
             <div class="gantt-project-title">
               <strong title="${escapeHtml(item.project.name)}">${escapeHtml(item.project.name)}</strong>
-              <span class="gantt-project-status ${statusBarClass(item.project.status)}">${escapeHtml(item.project.status)}</span>
             </div>
             <small>${escapeHtml(item.project.area)}</small>
           </div>
-          <div class="gantt-bar-layer"><div class="gantt-bar ${statusBarClass(item.project.status)}" style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%" data-project-name="${escapeHtml(item.project.name)}" data-project-description="${escapeHtml(item.project.description || "Sem descrição cadastrada.")}" data-start-date="${escapeHtml(item.project.start)}" data-end-date="${escapeHtml(item.project.end)}" title="Clique para visualizar os detalhes"></div></div>
           <div class="gantt-cell gantt-status-cell">
             <div class="calendar-progress-status">
               <div class="calendar-progress-line">
@@ -10823,7 +10860,10 @@
               <span class="calendar-status-label">${escapeHtml(item.project.status)}</span>
             </div>
           </div>
-          <div class="gantt-cell gantt-owner-cell" title="${escapeHtml(item.project.owner)}">${escapeHtml(item.project.owner)}</div>`;
+          <div class="gantt-cell gantt-owner-cell" title="${escapeHtml(item.project.owner)}">${escapeHtml(item.project.owner)}</div>
+          ${hasDates
+            ? `<div class="gantt-bar-layer"><div class="gantt-bar ${statusBarClass(item.project.status)}" style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%" data-project-name="${escapeHtml(item.project.name)}" data-project-description="${escapeHtml(item.project.description || "Sem descrição cadastrada.")}" data-start-date="${escapeHtml(item.project.start)}" data-end-date="${escapeHtml(item.project.end)}" title="Clique para visualizar os detalhes"></div></div>`
+            : `<div class="gantt-bar-layer no-date"><span class="gantt-no-date-label">SEM DATA DEFINIDA</span></div>`}`;
       });
       grid.innerHTML = html;
 
@@ -10959,9 +10999,11 @@
       document.getElementById("projectOwner").value = currentUser.name;
       document.getElementById("projectDescription").value = "";
       document.getElementById("projectLink").value = "";
+      document.getElementById("projectNoDate").checked = false;
       document.getElementById("projectStart").value = "";
       document.getElementById("projectEnd").value = "";
       document.getElementById("projectStatus").value = "Em andamento";
+      syncNoDateProjectFields();
       document.getElementById("projectArea").value = "Telemetria";
       progressInput.value = 0;
       progressValue.textContent = "0%";
@@ -10978,14 +11020,43 @@
       document.getElementById("projectOwner").value = project.owner || currentUser.name;
       document.getElementById("projectDescription").value = project.description || "";
       document.getElementById("projectLink").value = project.link || "";
+      const projectHasNoDate = !parseBrazilianDate(project.start) || !parseBrazilianDate(project.end);
+      document.getElementById("projectNoDate").checked = projectHasNoDate;
       document.getElementById("projectStart").value = brazilianDateToInput(project.start);
       document.getElementById("projectEnd").value = brazilianDateToInput(project.end);
-      document.getElementById("projectStatus").value = project.status || "Em andamento";
+      document.getElementById("projectStatus").value = projectHasNoDate ? "Não iniciado" : (project.status || "Em andamento");
+      syncNoDateProjectFields();
       progressInput.value = Number(project.progress || 0);
       progressValue.textContent = `${progressInput.value}%`;
       updateRegistrationFormMode();
       openRegistrationModal("edit");
     }
+
+    function syncNoDateProjectFields() {
+      const noDate = document.getElementById("projectNoDate")?.checked === true;
+      const startField = document.getElementById("projectStart");
+      const endField = document.getElementById("projectEnd");
+      const statusField = document.getElementById("projectStatus");
+      if (!startField || !endField || !statusField) return;
+
+      startField.disabled = noDate;
+      endField.disabled = noDate;
+      if (noDate) {
+        startField.value = "";
+        endField.value = "";
+        statusField.value = "Não iniciado";
+        statusField.disabled = true;
+        progressInput.value = 0;
+        progressInput.disabled = true;
+        progressValue.textContent = "0%";
+      } else {
+        statusField.disabled = false;
+        progressInput.disabled = false;
+        if (statusField.value === "Não iniciado") statusField.value = "Em andamento";
+      }
+    }
+
+    document.getElementById("projectNoDate").addEventListener("change", syncNoDateProjectFields);
 
     document.getElementById("toggleFilters").addEventListener("click", () => {
       filterStrip.classList.toggle("open");
@@ -11113,17 +11184,18 @@
       const ownerInput = document.getElementById("projectOwner").value.trim();
       const description = document.getElementById("projectDescription").value.trim();
       const projectLink = document.getElementById("projectLink").value.trim();
+      const noDate = document.getElementById("projectNoDate").checked;
       const start = document.getElementById("projectStart").value;
       const end = document.getElementById("projectEnd").value;
-      const status = document.getElementById("projectStatus").value;
-      const progress = Number(progressInput.value || 0);
+      const status = noDate ? "Não iniciado" : document.getElementById("projectStatus").value;
+      const progress = noDate ? 0 : Number(progressInput.value || 0);
       const selectedArea = document.getElementById("projectArea").value;
 
       if (!name) return showToast("Informe o nome do projeto.");
       if (!ownerInput) return showToast("Informe o responsável inicial.");
-      if (!start) return showToast("Informe uma data de início válida.");
-      if (!end) return showToast("Informe uma data prevista de conclusão válida.");
-      if (new Date(`${end}T00:00:00`) < new Date(`${start}T00:00:00`)) {
+      if (!noDate && !start) return showToast("Informe uma data de início válida.");
+      if (!noDate && !end) return showToast("Informe uma data prevista de conclusão válida.");
+      if (!noDate && new Date(`${end}T00:00:00`) < new Date(`${start}T00:00:00`)) {
         return showToast("A data final não pode ser anterior à data de início.");
       }
       if (projectLink) {
@@ -11150,10 +11222,11 @@
             nome: name,
             area: selectedArea,
             descricao: description,
-            dataInicio: formatDateInput(start),
-            dataFim: formatDateInput(end),
+            dataInicio: noDate ? "" : formatDateInput(start),
+            dataFim: noDate ? "" : formatDateInput(end),
+            semData: noDate,
             responsavel: ownerInput,
-            status: nextStatus,
+            status: noDate ? "Não iniciado" : nextStatus,
             progresso: progress,
             linkSistema: projectLink
           };
@@ -11186,8 +11259,8 @@
             if (index >= 0) projects[index] = mapped; else projects.unshift(mapped);
           } else {
             Object.assign(currentProject, {
-              name, area: selectedArea, description, start: formatDateInput(start), end: formatDateInput(end),
-              owner: ownerInput, initials: initialsFromName(ownerInput), status: nextStatus,
+              name, area: selectedArea, description, start: noDate ? "" : formatDateInput(start), end: noDate ? "" : formatDateInput(end),
+              noDate, owner: ownerInput, initials: initialsFromName(ownerInput), status: noDate ? "Não iniciado" : nextStatus,
               progress, link: projectLink, orangeIcon: ["Pausado", "Em atraso"].includes(nextStatus)
             });
             currentProject.updates = Array.isArray(currentProject.updates) ? currentProject.updates : [];
@@ -11212,10 +11285,11 @@
           nome: name,
           area: selectedArea,
           descricao: description,
-          dataInicio: formatDateInput(start),
-          dataFim: formatDateInput(end),
+          dataInicio: noDate ? "" : formatDateInput(start),
+          dataFim: noDate ? "" : formatDateInput(end),
+          semData: noDate,
           responsavel: ownerInput,
-          status: progress === 100 ? "Concluído" : status,
+          status: noDate ? "Não iniciado" : (progress === 100 ? "Concluído" : status),
           progresso: progress,
           linkSistema: projectLink
         };
@@ -11253,6 +11327,7 @@
       renderProjects();
     }, 60000);
     updateRegistrationFormMode();
+    syncNoDateProjectFields();
     renderAreaOptions();
     renderProjects();
     showPage("Visão Geral");
@@ -11438,6 +11513,7 @@
         description: project.descricao || "",
         start: apiDateToBr(project.dataInicio),
         end: apiDateToBr(project.dataFim),
+        noDate: project.semData === true || project.semData === "true" || (!project.dataInicio && !project.dataFim),
         owner,
         initials: initialsFromName(owner),
         avatar: "a2",
