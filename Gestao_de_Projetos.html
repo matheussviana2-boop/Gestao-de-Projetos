@@ -7,7 +7,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <title>CSC Gestão de Projetos | v84</title>
+  <title>CSC Gestão de Projetos | v85</title>
   <style>
     :root {
       --bg: #030a12;
@@ -3084,7 +3084,7 @@
     .gantt-grid {
       min-width: 1120px;
       display: grid;
-      grid-template-columns: 58px 250px repeat(12, minmax(62px, 1fr)) 132px;
+      grid-template-columns: 58px 290px repeat(12, minmax(62px, 1fr)) 132px 160px;
       border: 1px solid rgba(65,190,233,.16);
       border-radius: 14px;
       overflow: hidden;
@@ -3126,9 +3126,15 @@
     .gantt-header.month-12 { background:#f2c45b;color:#07131d; }
 
     .gantt-row-id { justify-content:center;color:var(--muted);font-weight:800; }
-    .gantt-project { align-items:flex-start;justify-content:center;flex-direction:column;gap:3px;min-width:0; }
-    .gantt-project strong { width:100%;color:#edf5f8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.72rem; }
+    .gantt-project { align-items:flex-start;justify-content:center;flex-direction:column;gap:5px;min-width:0;cursor:pointer; }
+    .gantt-project-title { width:100%;display:flex;align-items:center;gap:7px;min-width:0; }
+    .gantt-project strong { min-width:0;flex:1;color:#edf5f8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.72rem; }
     .gantt-project small { width:100%;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.61rem; }
+    .gantt-project-status { flex:0 0 auto;padding:3px 7px;border-radius:999px;font-size:.52rem;font-weight:800;line-height:1.1;color:#08748f;background:rgba(47,159,192,.14);border:1px solid rgba(47,159,192,.28);white-space:nowrap; }
+    .gantt-project-status.paused { color:#a85c00;background:rgba(232,120,8,.12);border-color:rgba(232,120,8,.25); }
+    .gantt-project-status.completed { color:#16815a;background:rgba(26,166,108,.12);border-color:rgba(26,166,108,.25); }
+    .gantt-project-status.delayed, .gantt-project-status.cancelled { color:#b62d3a;background:rgba(206,51,64,.11);border-color:rgba(206,51,64,.24); }
+    .gantt-owner-cell { justify-content:center;text-align:center;font-weight:750;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
 
     .gantt-bar-layer {
       grid-column: 3 / 15;
@@ -7204,7 +7210,7 @@
     .calendar-date-popover {
       position: fixed;
       z-index: 9999;
-      width: min(270px, calc(100vw - 24px));
+      width: min(340px, calc(100vw - 24px));
       padding: 13px 14px;
       border-radius: 12px;
       border: 1px solid rgba(52, 139, 169, .28);
@@ -7233,6 +7239,20 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+
+    .calendar-project-description {
+      margin: 0 0 9px;
+      padding: 9px 10px;
+      border-radius: 9px;
+      background: rgba(221, 237, 244, .72);
+      color: #4f6875;
+      font-size: .72rem;
+      line-height: 1.45;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      max-height: 120px;
+      overflow-y: auto;
     }
 
     .calendar-date-popover-row {
@@ -9045,7 +9065,6 @@
               </div>
               <div class="project-name">
                 <strong>${escapeHtml(project.name)}</strong>
-                ${project.description ? `<small>${escapeHtml(project.description)}</small>` : ""}
               </div>
             </div>
           </td>
@@ -10770,7 +10789,7 @@
 
       let html = `<div class="gantt-header">ID</div><div class="gantt-header project-head">Projeto</div>` +
         months.map((month,index)=>`<div class="gantt-header month-${index+1}">${month}</div>`).join("") +
-        `<div class="gantt-header">Status</div>`;
+        `<div class="gantt-header">Status</div><div class="gantt-header">Responsável</div>`;
 
       if (!visible.length) {
         html += `<div class="gantt-empty"><svg><use href="#i-calendar"/></svg><strong>Nenhum projeto neste ano</strong><span>Cadastre projetos com datas dentro de ${year} para preencher a agenda.</span></div>`;
@@ -10785,8 +10804,14 @@
         const width = Math.max(1.3, ((clippedEnd-clippedStart)/duration)*100);
         html += `
           <div class="gantt-cell gantt-row-id">${String(index+1).padStart(2,"0")}</div>
-          <div class="gantt-cell gantt-project"><strong title="${escapeHtml(item.project.name)}">${escapeHtml(item.project.name)}</strong><small>${escapeHtml(item.project.area)} · ${escapeHtml(item.project.owner)}</small></div>
-          <div class="gantt-bar-layer"><div class="gantt-bar ${statusBarClass(item.project.status)}" style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%" data-project-name="${escapeHtml(item.project.name)}" data-start-date="${escapeHtml(item.project.start)}" data-end-date="${escapeHtml(item.project.end)}" title="Clique para visualizar as datas"></div></div>
+          <div class="gantt-cell gantt-project" data-project-name="${escapeHtml(item.project.name)}" data-project-description="${escapeHtml(item.project.description || "Sem descrição cadastrada.")}" data-start-date="${escapeHtml(item.project.start)}" data-end-date="${escapeHtml(item.project.end)}" title="Clique para visualizar a descrição">
+            <div class="gantt-project-title">
+              <strong title="${escapeHtml(item.project.name)}">${escapeHtml(item.project.name)}</strong>
+              <span class="gantt-project-status ${statusBarClass(item.project.status)}">${escapeHtml(item.project.status)}</span>
+            </div>
+            <small>${escapeHtml(item.project.area)}</small>
+          </div>
+          <div class="gantt-bar-layer"><div class="gantt-bar ${statusBarClass(item.project.status)}" style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%" data-project-name="${escapeHtml(item.project.name)}" data-project-description="${escapeHtml(item.project.description || "Sem descrição cadastrada.")}" data-start-date="${escapeHtml(item.project.start)}" data-end-date="${escapeHtml(item.project.end)}" title="Clique para visualizar os detalhes"></div></div>
           <div class="gantt-cell gantt-status-cell">
             <div class="calendar-progress-status">
               <div class="calendar-progress-line">
@@ -10797,21 +10822,24 @@
               </div>
               <span class="calendar-status-label">${escapeHtml(item.project.status)}</span>
             </div>
-          </div>`;
+          </div>
+          <div class="gantt-cell gantt-owner-cell" title="${escapeHtml(item.project.owner)}">${escapeHtml(item.project.owner)}</div>`;
       });
       grid.innerHTML = html;
 
       const popover = document.getElementById("calendarDatePopover");
-      grid.querySelectorAll(".gantt-bar").forEach(bar => {
-        bar.addEventListener("click", event => {
+      grid.querySelectorAll(".gantt-bar, .gantt-project").forEach(target => {
+        target.addEventListener("click", event => {
           event.stopPropagation();
-          const rect = bar.getBoundingClientRect();
-          const projectName = bar.dataset.projectName || "Projeto";
-          const startDate = bar.dataset.startDate || "—";
-          const endDate = bar.dataset.endDate || "—";
+          const rect = target.getBoundingClientRect();
+          const projectName = target.dataset.projectName || "Projeto";
+          const projectDescription = target.dataset.projectDescription || "Sem descrição cadastrada.";
+          const startDate = target.dataset.startDate || "—";
+          const endDate = target.dataset.endDate || "—";
 
           popover.innerHTML = `
-            <strong title="${projectName}">${projectName}</strong>
+            <strong title="${escapeHtml(projectName)}">${escapeHtml(projectName)}</strong>
+            <div class="calendar-project-description">${escapeHtml(projectDescription)}</div>
             <div class="calendar-date-popover-row"><span>Data inicial</span><span>${startDate}</span></div>
             <div class="calendar-date-popover-row"><span>Data final</span><span>${endDate}</span></div>
           `;
@@ -10819,11 +10847,11 @@
           popover.classList.add("show");
           popover.setAttribute("aria-hidden", "false");
 
-          const popupWidth = Math.min(270, window.innerWidth - 24);
+          const popupWidth = Math.min(340, window.innerWidth - 24);
           let left = rect.left + rect.width / 2 - popupWidth / 2;
           left = Math.max(12, Math.min(left, window.innerWidth - popupWidth - 12));
           let top = rect.bottom + 10;
-          if (top + 130 > window.innerHeight) top = rect.top - 130;
+          if (top + 210 > window.innerHeight) top = rect.top - 210;
 
           popover.style.left = `${left}px`;
           popover.style.top = `${Math.max(12, top)}px`;
@@ -10834,7 +10862,7 @@
     document.addEventListener("click", event => {
       const popover = document.getElementById("calendarDatePopover");
       if (!popover) return;
-      if (!event.target.closest(".calendar-date-popover") && !event.target.closest(".gantt-bar")) {
+      if (!event.target.closest(".calendar-date-popover") && !event.target.closest(".gantt-bar") && !event.target.closest(".gantt-project")) {
         popover.classList.remove("show");
         popover.setAttribute("aria-hidden", "true");
       }
