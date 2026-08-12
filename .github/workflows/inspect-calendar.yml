@@ -1,0 +1,32 @@
+name: Inspect calendar code
+on:
+  push:
+    paths:
+      - '.github/workflows/inspect-calendar.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mostrar trechos relevantes
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          text = Path('Gestao_de_Projetos.html').read_text(encoding='utf-8')
+          needles = ['ganttGrid', 'function renderGantt', 'calendarYear', 'data-project', 'gantt-bar', 'calendar-project', 'milestone']
+          lines = text.splitlines()
+          printed=[]
+          for needle in needles:
+              print('\n===== NEEDLE:', needle, '=====')
+              for i,line in enumerate(lines):
+                  if needle in line:
+                      a=max(0,i-25); b=min(len(lines),i+55)
+                      key=(a,b)
+                      if key in printed: continue
+                      printed.append(key)
+                      for j in range(a,b): print(f'{j+1:05d}: {lines[j]}')
+                      print('---')
+          PY
