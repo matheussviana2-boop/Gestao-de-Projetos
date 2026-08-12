@@ -7,7 +7,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <title>CSC Gestão de Projetos | v86</title>
+  <title>CSC Gestão de Projetos | v87</title>
   <style>
     :root {
       --bg: #030a12;
@@ -7934,6 +7934,8 @@
   </section>
 
   <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4.2L19 9.2a2.1 2.1 0 0 0 0-3l-1.2-1.2a2.1 2.1 0 0 0-3 0L4 15.8V20Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="m13.8 6 4.2 4.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4.8A1.8 1.8 0 0 1 10.8 3h2.4A1.8 1.8 0 0 1 15 4.8V7m2.5 0-.7 12a2 2 0 0 1-2 1.9H9.2a2 2 0 0 1-2-1.9L6.5 7M10 11v6m4-6v6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-grid" viewBox="0 0 24 24">
       <rect x="3" y="3" width="7" height="7" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.8"/>
       <rect x="14" y="3" width="7" height="7" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.8"/>
@@ -11426,12 +11428,13 @@
         const tries = (isWrite || action === "login" || action === "health") ? 1 : 2;
         for (let i = 0; i < tries; i++) {
           try {
-            return await sendApi(action, payload, token, timeoutMs);
+            const effectiveTimeoutMs = isWrite ? Math.max(Number(timeoutMs) || 0, 75000) : timeoutMs;
+            return await sendApi(action, payload, token, effectiveTimeoutMs);
           } catch (error) {
             lastError = error;
             if (error?.expired || error?.isApiError) break;
             if (error?.name === "AbortError") {
-              lastError = new Error("O servidor demorou para responder. Tente novamente.");
+              lastError = new Error(isWrite ? "A gravação está demorando mais que o normal. Atualize os dados antes de tentar novamente para evitar duplicidade." : "O servidor demorou para responder. Tente novamente.");
               break;
             }
             if (i < tries - 1) await new Promise(resolve => window.setTimeout(resolve, 600));
