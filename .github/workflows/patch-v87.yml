@@ -1,0 +1,64 @@
+name: Patch Gestao de Projetos v87
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-v87.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar correções
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          path = Path('Gestao_de_Projetos.html')
+          html = path.read_text(encoding='utf-8')
+
+          html = html.replace('<title>CSC Gestão de Projetos | v86</title>', '<title>CSC Gestão de Projetos | v87</title>', 1)
+
+          # Os botões de usuário usavam #i-edit e #i-trash, mas esses símbolos não existiam no sprite SVG.
+          svg_anchor = '<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">'
+          if 'symbol id="i-edit"' not in html and svg_anchor in html:
+              symbols = '''
+    <symbol id="i-edit" viewBox="0 0 24 24">
+      <path d="M4 20h4.2L19 9.2a2.1 2.1 0 0 0 0-3l-1.2-1.2a2.1 2.1 0 0 0-3 0L4 15.8V20Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="m13.8 6 4.2 4.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24">
+      <path d="M4 7h16M9 7V4.8A1.8 1.8 0 0 1 10.8 3h2.4A1.8 1.8 0 0 1 15 4.8V7m2.5 0-.7 12a2 2 0 0 1-2 1.9H9.2a2 2 0 0 1-2-1.9L6.5 7M10 11v6m4-6v6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>'''
+              html = html.replace(svg_anchor, svg_anchor + symbols, 1)
+
+          # Gravações no Apps Script podem continuar no servidor depois de 25 s.
+          # Não abortamos writes cedo: isso evitava o falso erro embora a alteração fosse salva.
+          old = 'return await sendApi(action, payload, token, timeoutMs);'
+          new = '''const effectiveTimeoutMs = isWrite ? Math.max(Number(timeoutMs) || 0, 75000) : timeoutMs;
+            return await sendApi(action, payload, token, effectiveTimeoutMs);'''
+          if old in html:
+              html = html.replace(old, new, 1)
+
+          html = html.replace(
+              'lastError = new Error("O servidor demorou para responder. Tente novamente.");',
+              'lastError = new Error(isWrite ? "A gravação está demorando mais que o normal. Atualize os dados antes de tentar novamente para evitar duplicidade." : "O servidor demorou para responder. Tente novamente.");',
+              1
+          )
+
+          path.write_text(html, encoding='utf-8')
+          PY
+      - name: Commitar e remover patch temporário
+        shell: bash
+        run: |
+          rm -f .github/workflows/patch-v87.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Corrigir ícones de usuários e timeout de gravação"
+          git push
