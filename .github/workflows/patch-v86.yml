@@ -1,0 +1,190 @@
+name: Patch Gestao de Projetos v86
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-v86.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Aplicar correções
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          path = Path('Gestao_de_Projetos.html')
+          html = path.read_text(encoding='utf-8')
+
+          html = html.replace(
+              '<title>CSC Gestão de Projetos | v85</title>',
+              '<title>CSC Gestão de Projetos | v86</title>',
+              1
+          )
+
+          marker = '</body>'
+          signature = 'data-csc-date-validation-v86'
+          if signature not in html:
+              injection = r'''
+          <style data-csc-date-validation-v86>
+            .csc-date-error {
+              display: block;
+              min-height: 16px;
+              margin-top: 5px;
+              font-size: 11px;
+              line-height: 1.25;
+              font-weight: 700;
+              color: #c73535;
+            }
+            input.csc-date-invalid {
+              border-color: rgba(199, 53, 53, .68) !important;
+              box-shadow: 0 0 0 2px rgba(199, 53, 53, .08) !important;
+            }
+          </style>
+          <script data-csc-date-validation-v86>
+          (() => {
+            function strictDateParts(value) {
+              const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || '').trim());
+              if (!match) return null;
+              const year = Number(match[1]);
+              const month = Number(match[2]);
+              const day = Number(match[3]);
+              if (month < 1 || month > 12) return null;
+              const maxDay = new Date(year, month, 0).getDate();
+              if (day < 1 || day > maxDay) return null;
+              return { year, month, day };
+            }
+
+            function ensureErrorElement(field) {
+              let error = document.getElementById(field.id + 'InlineError');
+              if (!error) {
+                error = document.createElement('small');
+                error.id = field.id + 'InlineError';
+                error.className = 'csc-date-error';
+                error.setAttribute('aria-live', 'polite');
+                field.insertAdjacentElement('afterend', error);
+              }
+              return error;
+            }
+
+            function clearError(field) {
+              const error = ensureErrorElement(field);
+              error.textContent = '';
+              field.classList.remove('csc-date-invalid');
+              field.setCustomValidity('');
+            }
+
+            function validateField(field, label) {
+              if (!field || field.disabled || document.getElementById('projectNoDate')?.checked) {
+                if (field) clearError(field);
+                return true;
+              }
+
+              const error = ensureErrorElement(field);
+              const raw = String(field.value || '').trim();
+              let message = '';
+
+              if (field.validity?.badInput) {
+                message = `${label}: informe uma data existente no calendário.`;
+              } else if (raw && !strictDateParts(raw)) {
+                message = `${label}: essa data não existe no calendário.`;
+              }
+
+              if (message) {
+                field.classList.add('csc-date-invalid');
+                field.setCustomValidity(message);
+                error.textContent = message;
+                return false;
+              }
+
+              clearError(field);
+              return true;
+            }
+
+            function validateOrder() {
+              const noDate = document.getElementById('projectNoDate')?.checked;
+              const start = document.getElementById('projectStart');
+              const end = document.getElementById('projectEnd');
+              if (noDate || !start || !end || !start.value || !end.value) return;
+              const s = strictDateParts(start.value);
+              const e = strictDateParts(end.value);
+              if (!s || !e) return;
+              const sTime = Date.UTC(s.year, s.month - 1, s.day);
+              const eTime = Date.UTC(e.year, e.month - 1, e.day);
+              const error = ensureErrorElement(end);
+              if (eTime < sTime) {
+                const message = 'A data final não pode ser anterior à data de início.';
+                end.classList.add('csc-date-invalid');
+                end.setCustomValidity(message);
+                error.textContent = message;
+              } else if (!end.validity?.badInput) {
+                clearError(end);
+              }
+            }
+
+            function bind() {
+              const start = document.getElementById('projectStart');
+              const end = document.getElementById('projectEnd');
+              const noDate = document.getElementById('projectNoDate');
+              if (!start || !end) return;
+
+              ensureErrorElement(start);
+              ensureErrorElement(end);
+
+              const runStart = () => {
+                validateField(start, 'Data de início');
+                validateOrder();
+              };
+              const runEnd = () => {
+                validateField(end, 'Data prevista de conclusão');
+                validateOrder();
+              };
+
+              ['input', 'change', 'blur'].forEach(type => {
+                start.addEventListener(type, runStart);
+                end.addEventListener(type, runEnd);
+              });
+
+              noDate?.addEventListener('change', () => {
+                if (noDate.checked) {
+                  clearError(start);
+                  clearError(end);
+                } else {
+                  runStart();
+                  runEnd();
+                }
+              });
+            }
+
+            if (document.readyState === 'loading') {
+              document.addEventListener('DOMContentLoaded', bind, { once: true });
+            } else {
+              bind();
+            }
+          })();
+          </script>
+          '''
+              if marker not in html:
+                  raise SystemExit('Não foi possível localizar </body> no HTML.')
+              html = html.replace(marker, injection + '\n' + marker, 1)
+
+          path.write_text(html, encoding='utf-8')
+          PY
+
+      - name: Commitar atualização e remover patch temporário
+        shell: bash
+        run: |
+          rm -f .github/workflows/patch-v86.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Corrigir validação de datas no cadastro de projetos"
+          git push
