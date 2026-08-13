@@ -1,0 +1,52 @@
+name: Corrigir listagem cadastros v89
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-cadastros-list-v89.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Corrigir limite indevido de 5 projetos
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('Gestao_de_Projetos.html')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('<title>CSC Gestão de Projetos | v88</title>', '<title>CSC Gestão de Projetos | v89</title>', 1)
+          old = 'list.innerHTML = projects.slice(0, 5).map(project => `'
+          new = 'list.innerHTML = projects.map(project => `'
+          if old not in s:
+              raise SystemExit('Trecho de listagem de cadastros não localizado')
+          s = s.replace(old, new, 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Validar JavaScript
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s = Path('Gestao_de_Projetos.html').read_text(encoding='utf-8')
+          scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', s, flags=re.S|re.I)
+          for i, code in enumerate(scripts):
+              Path(f'/tmp/script_{i}.js').write_text(code, encoding='utf-8')
+          print(f'{len(scripts)} scripts extraídos')
+          PY
+          for f in /tmp/script_*.js; do node --check "$f"; done
+      - name: Commitar correção
+        shell: bash
+        run: |
+          rm -f .github/workflows/fix-cadastros-list-v89.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Exibir todos os projetos na tela de cadastros"
+          git push
