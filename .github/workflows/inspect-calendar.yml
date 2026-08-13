@@ -1,37 +1,39 @@
-name: Aplicar ajuste visual v91
+name: Inspect calendar code v92
 on:
   push:
     paths:
       - '.github/workflows/inspect-calendar.yml'
 permissions:
-  contents: write
+  contents: read
 jobs:
-  patch:
+  inspect:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Aplicar patch v91
-        run: python .github/patch_layout_v91.py
-      - name: Validar JavaScript
+      - name: Mostrar trechos do calendario
         shell: bash
         run: |
           python <<'PY'
           from pathlib import Path
-          import re, subprocess
-          html = Path('Gestao_de_Projetos.html').read_text(encoding='utf-8')
-          scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html, re.S|re.I)
-          for i, script in enumerate(scripts):
-              p = Path(f'/tmp/csc-v91-{i}.js')
-              p.write_text(script, encoding='utf-8')
-              subprocess.run(['node','--check',str(p)], check=True)
-          print(f'{len(scripts)} blocos JavaScript validados')
+          text = Path('Gestao_de_Projetos.html').read_text(encoding='utf-8')
+          needles = [
+            '.gantt-', 'ganttGrid', 'renderGantt', 'calendarYear',
+            'calendar-year-select', 'Calendário', 'calendar-status',
+            'gantt-project', 'gantt-row', 'sem data definida'
+          ]
+          lines = text.splitlines()
+          seen=[]
+          for needle in needles:
+              print('\n===== NEEDLE:', needle, '=====')
+              count=0
+              for i,line in enumerate(lines):
+                  if needle.lower() in line.lower():
+                      a=max(0,i-28); b=min(len(lines),i+80)
+                      key=(a,b)
+                      if key in seen: continue
+                      seen.append(key)
+                      print(f'--- linhas {a+1}-{b} ---')
+                      for j in range(a,b): print(f'{j+1:05d}: {lines[j]}')
+                      count += 1
+                      if count >= 5: break
           PY
-      - name: Commitar resultado
-        shell: bash
-        run: |
-          rm -f .github/patch_layout_v91.py
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Gestao_de_Projetos.html .github/patch_layout_v91.py
-          git commit -m "Alinhar status e quebrar nomes longos dos projetos"
-          git push
