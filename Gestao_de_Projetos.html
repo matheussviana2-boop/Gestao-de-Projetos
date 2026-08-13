@@ -7,7 +7,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <title>CSC Gestão de Projetos | v90</title>
+  <title>CSC Gestão de Projetos | v91</title>
   <style>
     :root {
       --bg: #030a12;
@@ -7919,6 +7919,73 @@
     .pie-legend{gap:10px!important}.pie-legend-item{font-size:.75rem!important;min-height:30px!important;column-gap:9px!important}.pie-legend-name{max-width:145px!important;font-size:.74rem!important}.pie-legend-value{font-size:.76rem!important;font-weight:850!important;min-width:66px!important}.pie-total-note{font-size:.71rem!important}.registration-pagination{display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:14px 2px 2px}.registration-pagination[hidden]{display:none!important}.registration-page-btn{min-width:32px;height:32px;padding:0 9px;border-radius:8px;border:1px solid rgba(54,142,181,.24);background:rgba(245,251,253,.74);color:#426779;font:inherit;font-size:.72rem;font-weight:750;cursor:pointer}.registration-page-btn.active{background:#438faa;color:#fff;border-color:#438faa}.registration-page-btn:disabled{opacity:.38;cursor:default}.calendar-date-popover{position:fixed}.calendar-popover-close{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:8px;border:1px solid rgba(46,132,170,.24);background:rgba(244,250,253,.92);color:#36718c;display:grid;place-items:center;font-size:18px;line-height:1;cursor:pointer;z-index:2}.calendar-date-popover>strong{padding-right:30px;display:block}
     @media(max-width:1180px){.pie-panel-body{min-height:0!important;height:auto!important}}
   </style>
+
+  <style data-csc-layout-v91>
+    #cadastrosPage .registration-item-main { min-width: 0 !important; }
+    #cadastrosPage .registration-item-meta {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      flex-wrap: wrap !important;
+      gap: 10px 14px !important;
+      margin-top: 9px !important;
+    }
+    #cadastrosPage .registration-item-meta > span:first-child {
+      flex: 0 1 auto !important;
+      min-width: 0 !important;
+      font-size: .76rem !important;
+      line-height: 1.25 !important;
+      font-weight: 650 !important;
+    }
+    #cadastrosPage .registration-item-meta .status {
+      position: static !important;
+      flex: 0 0 auto !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: auto !important;
+      min-width: 92px !important;
+      min-height: 27px !important;
+      padding: 4px 10px !important;
+      margin: 0 !important;
+      border-radius: 999px !important;
+      font-size: .76rem !important;
+      line-height: 1.15 !important;
+      font-weight: 800 !important;
+      text-align: center !important;
+      white-space: normal !important;
+    }
+    #overviewPage .projects-panel .project-cell,
+    #overviewPage .projects-panel td:first-child .project-cell {
+      min-width: 0 !important;
+      align-items: center !important;
+    }
+    #overviewPage .projects-panel .project-cell strong,
+    #overviewPage .projects-panel td:first-child strong {
+      display: -webkit-box !important;
+      -webkit-box-orient: vertical !important;
+      -webkit-line-clamp: 2 !important;
+      white-space: normal !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      overflow-wrap: anywhere !important;
+      word-break: break-word !important;
+      max-width: none !important;
+      line-height: 1.28 !important;
+      font-size: .82rem !important;
+    }
+    #overviewPage .projects-panel tbody tr { height: auto !important; min-height: 70px !important; }
+    #overviewPage .projects-panel tbody td {
+      padding-top: 10px !important;
+      padding-bottom: 10px !important;
+      vertical-align: middle !important;
+    }
+    @media (max-width: 1180px) {
+      #overviewPage .projects-panel .project-cell strong,
+      #overviewPage .projects-panel td:first-child strong { -webkit-line-clamp: 3 !important; }
+    }
+  </style>
+
 </head>
 <body data-theme="light" class="auth-pending session-checking">
 
