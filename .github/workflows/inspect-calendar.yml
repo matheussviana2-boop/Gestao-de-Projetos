@@ -1,32 +1,37 @@
-name: Inspect calendar code
+name: Aplicar ajuste visual v91
 on:
   push:
     paths:
       - '.github/workflows/inspect-calendar.yml'
 permissions:
-  contents: read
+  contents: write
 jobs:
-  inspect:
+  patch:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Mostrar trechos relevantes
+      - name: Aplicar patch v91
+        run: python .github/patch_layout_v91.py
+      - name: Validar JavaScript
         shell: bash
         run: |
           python <<'PY'
           from pathlib import Path
-          text = Path('Gestao_de_Projetos.html').read_text(encoding='utf-8')
-          needles = ['ganttGrid', 'function renderGantt', 'calendarYear', 'data-project', 'gantt-bar', 'calendar-project', 'milestone']
-          lines = text.splitlines()
-          printed=[]
-          for needle in needles:
-              print('\n===== NEEDLE:', needle, '=====')
-              for i,line in enumerate(lines):
-                  if needle in line:
-                      a=max(0,i-25); b=min(len(lines),i+55)
-                      key=(a,b)
-                      if key in printed: continue
-                      printed.append(key)
-                      for j in range(a,b): print(f'{j+1:05d}: {lines[j]}')
-                      print('---')
+          import re, subprocess
+          html = Path('Gestao_de_Projetos.html').read_text(encoding='utf-8')
+          scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html, re.S|re.I)
+          for i, script in enumerate(scripts):
+              p = Path(f'/tmp/csc-v91-{i}.js')
+              p.write_text(script, encoding='utf-8')
+              subprocess.run(['node','--check',str(p)], check=True)
+          print(f'{len(scripts)} blocos JavaScript validados')
           PY
+      - name: Commitar resultado
+        shell: bash
+        run: |
+          rm -f .github/patch_layout_v91.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Gestao_de_Projetos.html .github/patch_layout_v91.py
+          git commit -m "Alinhar status e quebrar nomes longos dos projetos"
+          git push
