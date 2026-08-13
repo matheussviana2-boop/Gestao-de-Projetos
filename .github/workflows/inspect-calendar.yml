@@ -1,39 +1,89 @@
-name: Inspect calendar code v92
+name: Aplicar calendario v92
 on:
   push:
     paths:
       - '.github/workflows/inspect-calendar.yml'
 permissions:
-  contents: read
+  contents: write
 jobs:
-  inspect:
+  update-calendar:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Mostrar trechos do calendario
+      - name: Aplicar melhorias no calendario
         shell: bash
         run: |
           python <<'PY'
           from pathlib import Path
-          text = Path('Gestao_de_Projetos.html').read_text(encoding='utf-8')
-          needles = [
-            '.gantt-', 'ganttGrid', 'renderGantt', 'calendarYear',
-            'calendar-year-select', 'Calendário', 'calendar-status',
-            'gantt-project', 'gantt-row', 'sem data definida'
-          ]
-          lines = text.splitlines()
-          seen=[]
-          for needle in needles:
-              print('\n===== NEEDLE:', needle, '=====')
-              count=0
-              for i,line in enumerate(lines):
-                  if needle.lower() in line.lower():
-                      a=max(0,i-28); b=min(len(lines),i+80)
-                      key=(a,b)
-                      if key in seen: continue
-                      seen.append(key)
-                      print(f'--- linhas {a+1}-{b} ---')
-                      for j in range(a,b): print(f'{j+1:05d}: {lines[j]}')
-                      count += 1
-                      if count >= 5: break
+          p = Path('Gestao_de_Projetos.html')
+          s = p.read_text(encoding='utf-8')
+
+          s = s.replace('<title>CSC Gestão de Projetos | v91</title>', '<title>CSC Gestão de Projetos | v92</title>')
+
+          css_anchor = '''    .calendar-page { display: none; }\n    .calendar-page.active { display: block; }\n'''
+          css_insert = '''    .calendar-page { display: none; }\n    .calendar-page.active { display: block; }\n\n    /* Calendário v92 — visão gerencial ampliada */\n    #calendarPage .panel { overflow: visible; }\n    .calendar-dashboard { padding: 18px 18px 4px; }\n    .calendar-kpis { display:grid; grid-template-columns:repeat(5,minmax(150px,1fr)); gap:12px; margin-bottom:14px; }\n    .calendar-kpi { min-height:84px; border:1px solid rgba(52,159,196,.18); border-radius:14px; padding:13px 15px; background:rgba(255,255,255,.58); box-shadow:0 8px 22px rgba(15,52,75,.06); display:flex; align-items:center; justify-content:space-between; gap:12px; }\n    .calendar-kpi-main { display:grid; gap:4px; }\n    .calendar-kpi-label { font-size:.72rem; font-weight:800; color:var(--muted); }\n    .calendar-kpi-value { font-size:1.45rem; line-height:1; font-weight:900; color:#153447; }\n    .calendar-kpi-dot { width:13px; height:13px; border-radius:50%; box-shadow:0 0 0 6px rgba(33,171,210,.10); background:#22a8c7; }\n    .calendar-kpi.completed .calendar-kpi-dot { background:#2fac78; box-shadow:0 0 0 6px rgba(47,172,120,.10); }\n    .calendar-kpi.paused .calendar-kpi-dot { background:#e68b16; box-shadow:0 0 0 6px rgba(230,139,22,.10); }\n    .calendar-kpi.delayed .calendar-kpi-dot { background:#dc4c5d; box-shadow:0 0 0 6px rgba(220,76,93,.10); }\n    .calendar-filterbar { display:grid; grid-template-columns:minmax(240px,1.5fr) minmax(170px,.8fr) minmax(170px,.8fr) auto; gap:10px; align-items:end; padding:13px; border:1px solid rgba(52,159,196,.14); border-radius:14px; background:rgba(247,252,255,.72); }\n    .calendar-filter-field { display:grid; gap:6px; min-width:0; }\n    .calendar-filter-field label { font-size:.66rem; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.035em; }\n    .calendar-filter-input, .calendar-filter-select { width:100%; min-height:42px; border:1px solid rgba(56,142,181,.22); border-radius:10px; background:rgba(255,255,255,.88); color:#173546; padding:0 12px; outline:none; font:inherit; font-size:.76rem; }\n    .calendar-filter-input:focus, .calendar-filter-select:focus { border-color:rgba(27,160,202,.55); box-shadow:0 0 0 3px rgba(27,160,202,.08); }\n    .calendar-filter-clear { min-height:42px; white-space:nowrap; }\n    .calendar-filter-summary { margin-top:9px; font-size:.68rem; color:var(--muted); font-weight:700; }\n    #calendarPage .gantt-shell { padding:18px; }\n    #calendarPage .gantt-grid { min-width:1460px; grid-template-columns:64px 340px 170px 190px repeat(12,minmax(72px,1fr)); border-radius:16px; }\n    #calendarPage .gantt-header, #calendarPage .gantt-cell { min-height:62px; padding:10px 12px; font-size:.79rem; }\n    #calendarPage .gantt-header { min-height:50px; font-size:.76rem; letter-spacing:.045em; }\n    #calendarPage .gantt-project strong { font-size:.84rem; line-height:1.28; white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }\n    #calendarPage .gantt-project small { font-size:.69rem; }\n    #calendarPage .gantt-owner-cell { font-size:.74rem; }\n    #calendarPage .gantt-bar-layer { min-height:62px; }\n    #calendarPage .gantt-bar { top:16px; height:30px; min-width:18px; font-size:.66rem; box-shadow:0 3px 12px rgba(16,99,122,.18); }\n    #calendarPage .calendar-progress-status { gap:8px; min-width:110px; }\n    #calendarPage .calendar-progress-track { height:9px; min-width:65px; }\n    #calendarPage .calendar-progress-value { width:38px; font-size:.72rem; }\n    #calendarPage .calendar-status-label { font-size:.68rem; font-weight:700; }\n    #calendarPage .gantt-no-date-label { font-size:.68rem; font-weight:850; padding:7px 12px; }\n    #calendarPage .calendar-legend { padding:2px 18px 18px; font-size:.72rem; gap:12px 22px; }\n    #calendarPage .calendar-legend-color { width:28px; height:9px; }\n    body:not([data-theme="light"]) .calendar-kpi { background:rgba(7,28,41,.62); border-color:rgba(74,188,224,.16); }\n    body:not([data-theme="light"]) .calendar-kpi-value { color:#eef8fb; }\n    body:not([data-theme="light"]) .calendar-filterbar { background:rgba(5,23,35,.56); border-color:rgba(74,188,224,.14); }\n    body:not([data-theme="light"]) .calendar-filter-input, body:not([data-theme="light"]) .calendar-filter-select { background:rgba(4,20,31,.82); color:#e9f5f9; border-color:rgba(74,188,224,.18); }\n    @media(max-width:1200px){ .calendar-kpis{grid-template-columns:repeat(3,minmax(150px,1fr));} .calendar-filterbar{grid-template-columns:1fr 1fr;} }\n    @media(max-width:760px){ .calendar-kpis{grid-template-columns:repeat(2,minmax(135px,1fr));} .calendar-filterbar{grid-template-columns:1fr;} .calendar-dashboard{padding:12px 12px 0;} }\n'''
+          if 'Calendário v92 — visão gerencial ampliada' not in s:
+              if css_anchor not in s: raise SystemExit('Âncora CSS do calendário não encontrada')
+              s = s.replace(css_anchor, css_insert, 1)
+
+          markup_anchor = '''          <div class="gantt-shell"><div id="ganttGrid" class="gantt-grid"></div></div>\n          <div class="calendar-legend">\n'''
+          markup_insert = '''          <div class="calendar-dashboard">\n            <div class="calendar-kpis" aria-label="Indicadores do calendário">\n              <div class="calendar-kpi"><div class="calendar-kpi-main"><span class="calendar-kpi-label">Projetos exibidos</span><strong id="calendarKpiTotal" class="calendar-kpi-value">0</strong></div><span class="calendar-kpi-dot"></span></div>\n              <div class="calendar-kpi"><div class="calendar-kpi-main"><span class="calendar-kpi-label">Em andamento</span><strong id="calendarKpiProgress" class="calendar-kpi-value">0</strong></div><span class="calendar-kpi-dot"></span></div>\n              <div class="calendar-kpi completed"><div class="calendar-kpi-main"><span class="calendar-kpi-label">Concluídos</span><strong id="calendarKpiCompleted" class="calendar-kpi-value">0</strong></div><span class="calendar-kpi-dot"></span></div>\n              <div class="calendar-kpi paused"><div class="calendar-kpi-main"><span class="calendar-kpi-label">Pausados</span><strong id="calendarKpiPaused" class="calendar-kpi-value">0</strong></div><span class="calendar-kpi-dot"></span></div>\n              <div class="calendar-kpi delayed"><div class="calendar-kpi-main"><span class="calendar-kpi-label">Em atraso</span><strong id="calendarKpiDelayed" class="calendar-kpi-value">0</strong></div><span class="calendar-kpi-dot"></span></div>\n            </div>\n            <div class="calendar-filterbar">\n              <div class="calendar-filter-field"><label for="calendarSearch">Projeto</label><input id="calendarSearch" class="calendar-filter-input" type="search" placeholder="Buscar pelo nome do projeto..." autocomplete="off" /></div>\n              <div class="calendar-filter-field"><label for="calendarAreaFilter">Área / tipo</label><select id="calendarAreaFilter" class="calendar-filter-select"><option value="">Todas as áreas</option></select></div>\n              <div class="calendar-filter-field"><label for="calendarStatusFilter">Status</label><select id="calendarStatusFilter" class="calendar-filter-select"><option value="">Todos os status</option></select></div>\n              <button id="calendarClearFilters" class="btn calendar-filter-clear" type="button">Limpar filtros</button>\n            </div>\n            <div id="calendarFilterSummary" class="calendar-filter-summary">Exibindo todos os projetos do ano selecionado.</div>\n          </div>\n          <div class="gantt-shell"><div id="ganttGrid" class="gantt-grid"></div></div>\n          <div class="calendar-legend">\n'''
+          if 'id="calendarKpiTotal"' not in s:
+              if markup_anchor not in s: raise SystemExit('Âncora HTML do calendário não encontrada')
+              s = s.replace(markup_anchor, markup_insert, 1)
+
+          render_anchor = '''    function renderCalendar() {\n'''
+          helpers = '''    function normalizeCalendarFilter(value) {\n      return String(value || "").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase().trim();\n    }\n\n    function populateCalendarFilters() {\n      const areaSelect = document.getElementById("calendarAreaFilter");\n      const statusSelect = document.getElementById("calendarStatusFilter");\n      if (!areaSelect || !statusSelect) return;\n      const currentArea = areaSelect.value;\n      const currentStatus = statusSelect.value;\n      const areas = [...new Set(projects.map(p => String(p.area || "").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"pt-BR"));\n      const statuses = [...new Set(projects.map(p => String(p.status || "").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"pt-BR"));\n      areaSelect.innerHTML = `<option value="">Todas as áreas</option>` + areas.map(v=>`<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");\n      statusSelect.innerHTML = `<option value="">Todos os status</option>` + statuses.map(v=>`<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");\n      if (areas.includes(currentArea)) areaSelect.value = currentArea;\n      if (statuses.includes(currentStatus)) statusSelect.value = currentStatus;\n    }\n\n    function updateCalendarIndicators(items) {\n      const list = items.map(item => item.project);\n      const count = status => list.filter(project => normalizeCalendarFilter(project.status) === normalizeCalendarFilter(status)).length;\n      const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = String(value); };\n      set("calendarKpiTotal", list.length);\n      set("calendarKpiProgress", count("Em andamento"));\n      set("calendarKpiCompleted", count("Concluído"));\n      set("calendarKpiPaused", count("Pausado"));\n      set("calendarKpiDelayed", count("Em atraso"));\n      const summary = document.getElementById("calendarFilterSummary");\n      if (summary) summary.textContent = `Exibindo ${list.length} projeto${list.length === 1 ? "" : "s"} com os filtros atuais.`;\n    }\n\n    function renderCalendar() {\n'''
+          if 'function normalizeCalendarFilter' not in s:
+              if render_anchor not in s: raise SystemExit('Função renderCalendar não encontrada')
+              s = s.replace(render_anchor, helpers, 1)
+
+          year_anchor = '''      const year = Number(select.value) || new Date().getFullYear();\n      const months = ["JAN","FEV","MAR","ABR","MAI","JUN","JUL","AGO","SET","OUT","NOV","DEZ"];\n'''
+          year_insert = '''      const year = Number(select.value) || new Date().getFullYear();\n      populateCalendarFilters();\n      const searchTerm = normalizeCalendarFilter(document.getElementById("calendarSearch")?.value);\n      const areaFilter = normalizeCalendarFilter(document.getElementById("calendarAreaFilter")?.value);\n      const statusFilter = normalizeCalendarFilter(document.getElementById("calendarStatusFilter")?.value);\n      const months = ["JAN","FEV","MAR","ABR","MAI","JUN","JUL","AGO","SET","OUT","NOV","DEZ"];\n'''
+          if 'const searchTerm = normalizeCalendarFilter' not in s:
+              if year_anchor not in s: raise SystemExit('Âncora do ano não encontrada')
+              s = s.replace(year_anchor, year_insert, 1)
+
+          visible_anchor = '''      })).filter(item => (!item.start || !item.end) || (item.end >= startYear && item.start <= endYear))\n        .sort((a,b)=>{\n'''
+          visible_insert = '''      })).filter(item => (!item.start || !item.end) || (item.end >= startYear && item.start <= endYear))\n        .filter(item => {\n          const project = item.project;\n          const matchesName = !searchTerm || normalizeCalendarFilter(project.name).includes(searchTerm);\n          const matchesArea = !areaFilter || normalizeCalendarFilter(project.area) === areaFilter;\n          const matchesStatus = !statusFilter || normalizeCalendarFilter(project.status) === statusFilter;\n          return matchesName && matchesArea && matchesStatus;\n        })\n        .sort((a,b)=>{\n'''
+          if 'const matchesName = !searchTerm' not in s:
+              if visible_anchor not in s: raise SystemExit('Âncora de projetos visíveis não encontrada')
+              s = s.replace(visible_anchor, visible_insert, 1)
+
+          empty_anchor = '''      if (!visible.length) {\n'''
+          if 'updateCalendarIndicators(visible);' not in s:
+              if empty_anchor not in s: raise SystemExit('Âncora de lista vazia não encontrada')
+              s = s.replace(empty_anchor, '      updateCalendarIndicators(visible);\n\n' + empty_anchor, 1)
+
+          listener_anchor = '''    document.getElementById("calendarYear").addEventListener("change", renderCalendar);\n'''
+          listener_insert = '''    document.getElementById("calendarYear").addEventListener("change", renderCalendar);\n    document.getElementById("calendarSearch")?.addEventListener("input", renderCalendar);\n    document.getElementById("calendarAreaFilter")?.addEventListener("change", renderCalendar);\n    document.getElementById("calendarStatusFilter")?.addEventListener("change", renderCalendar);\n    document.getElementById("calendarClearFilters")?.addEventListener("click", () => {\n      const search = document.getElementById("calendarSearch");\n      const area = document.getElementById("calendarAreaFilter");\n      const status = document.getElementById("calendarStatusFilter");\n      if (search) search.value = "";\n      if (area) area.value = "";\n      if (status) status.value = "";\n      renderCalendar();\n    });\n'''
+          if 'calendarClearFilters")?.addEventListener' not in s:
+              if listener_anchor not in s: raise SystemExit('Listener do ano não encontrado')
+              s = s.replace(listener_anchor, listener_insert, 1)
+
+          p.write_text(s, encoding='utf-8')
           PY
+
+      - name: Validar JavaScript
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const s = fs.readFileSync('Gestao_de_Projetos.html','utf8');
+          const blocks = [...s.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)].map(m => m[1]);
+          blocks.forEach((b,i) => { fs.writeFileSync(`/tmp/calendar-${i}.js`, b); require('child_process').execFileSync('node',['--check',`/tmp/calendar-${i}.js`],{stdio:'inherit'}); });
+          console.log(`JavaScript OK: ${blocks.length} blocos validados`);
+          NODE
+
+      - name: Publicar atualizacao
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Gestao_de_Projetos.html
+          if git diff --cached --quiet; then
+            echo "Nenhuma alteracao pendente"
+          else
+            git commit -m "Ampliar calendario e adicionar indicadores e filtros"
+            git push
+          fi
