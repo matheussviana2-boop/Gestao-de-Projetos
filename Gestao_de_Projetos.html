@@ -7,7 +7,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <title>CSC Gestão de Projetos | v88</title>
+  <title>CSC Gestão de Projetos | v89</title>
   <style>
     :root {
       --bg: #030a12;
@@ -9522,7 +9522,7 @@
       }
 
       empty.hidden = true;
-      list.innerHTML = projects.slice(0, 5).map(project => `
+      list.innerHTML = projects.map(project => `
         <div class="registration-item">
           <div class="registration-item-icon"><svg><use href="#${project.icon || "i-folder"}"/></svg></div>
           <div class="registration-item-main">
