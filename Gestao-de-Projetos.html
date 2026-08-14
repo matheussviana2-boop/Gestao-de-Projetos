@@ -12096,6 +12096,97 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
     border-color: rgba(199, 53, 53, .68) !important;
     box-shadow: 0 0 0 2px rgba(199, 53, 53, .08) !important;
   }
+
+
+/* Refinamento visual do calendário */
+#calendarFilterSummary { display:none !important; }
+
+#calendarPage .calendar-filterbar {
+  border:1px solid var(--line) !important;
+  border-radius:16px !important;
+  background:var(--panel) !important;
+  box-shadow:0 8px 24px rgba(8,42,61,.05) !important;
+  overflow:visible;
+}
+body[data-theme="light"] #calendarPage .calendar-filterbar {
+  background:rgba(248,252,255,.82) !important;
+  border-color:rgba(59,163,201,.22) !important;
+}
+
+#calendarPage .calendar-filter-input,
+#calendarPage .calendar-filter-select,
+#calendarPage .calendar-filter-clear,
+#calendarPage select,
+#calendarPage input[type="search"] {
+  border:1px solid var(--line) !important;
+  border-radius:12px !important;
+  font-family:inherit !important;
+  font-size:.82rem !important;
+  min-height:38px;
+  box-shadow:none !important;
+}
+body[data-theme="light"] #calendarPage .calendar-filter-input,
+body[data-theme="light"] #calendarPage .calendar-filter-select,
+body[data-theme="light"] #calendarPage .calendar-filter-clear,
+body[data-theme="light"] #calendarPage select,
+body[data-theme="light"] #calendarPage input[type="search"] {
+  border-color:rgba(71,157,194,.30) !important;
+  background:rgba(248,252,255,.92) !important;
+}
+
+#calendarPage table {
+  border-collapse:separate !important;
+  border-spacing:0 !important;
+  border-radius:16px !important;
+  overflow:hidden !important;
+}
+#calendarPage table th,
+#calendarPage table td {
+  font-size:.78rem !important;
+  line-height:1.35 !important;
+}
+#calendarPage table th {
+  font-weight:800 !important;
+  letter-spacing:.01em;
+}
+#calendarPage table td strong,
+#calendarPage table td .project-name,
+#calendarPage table td .calendar-project-name {
+  font-size:.80rem !important;
+}
+
+#calendarPage table th,
+#calendarPage table td {
+  border-right:1px solid rgba(59,163,201,.18) !important;
+  border-bottom:1px solid rgba(59,163,201,.14) !important;
+}
+#calendarPage table th:last-child,
+#calendarPage table td:last-child { border-right:0 !important; }
+#calendarPage table tr:last-child td { border-bottom:0 !important; }
+
+body[data-theme="light"] #calendarPage table th,
+body[data-theme="light"] #calendarPage table td {
+  border-right-color:rgba(55,145,183,.24) !important;
+  border-bottom-color:rgba(55,145,183,.18) !important;
+}
+
+#calendarPage .gantt-wrap,
+#calendarPage .gantt-table-wrap,
+#calendarPage .calendar-table-wrap,
+#calendarPage .calendar-grid-wrap,
+#calendarPage .table-wrap {
+  border:1px solid var(--line) !important;
+  border-radius:16px !important;
+  overflow:hidden !important;
+}
+body[data-theme="light"] #calendarPage .gantt-wrap,
+body[data-theme="light"] #calendarPage .gantt-table-wrap,
+body[data-theme="light"] #calendarPage .calendar-table-wrap,
+body[data-theme="light"] #calendarPage .calendar-grid-wrap,
+body[data-theme="light"] #calendarPage .table-wrap {
+  border-color:rgba(59,163,201,.22) !important;
+}
+
 </style>
 <script data-csc-date-validation-v86>
 (() => {
