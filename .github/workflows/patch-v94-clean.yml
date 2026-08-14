@@ -1,0 +1,132 @@
+name: Patch resumo projetos v94 clean
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-v94-clean.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Aplicar ajustes solicitados
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          path = Path('Gestao-de-Projetos.html')
+          html = path.read_text(encoding='utf-8')
+
+          html = html.replace('<title>CSC Gestão de Projetos | v93</title>', '<title>CSC Gestão de Projetos | v94</title>', 1)
+
+          # Remove resumo solto acima do painel da Visão Geral.
+          html = html.replace('''      <section id="overviewPage" class="dashboard-grid app-page active">\n        <div id="overviewCompactSummary" class="project-summary-strip" aria-label="Resumo dos projetos"></div>\n        <article class="panel projects-panel">''', '''      <section id="overviewPage" class="dashboard-grid app-page active">\n        <article class="panel projects-panel">''', 1)
+
+          # Coloca o resumo na mesma linha de Todos os Projetos.
+          html = html.replace('''            <div class="panel-title">\n              <h2>Todos os Projetos</h2>\n            </div>''', '''            <div class="panel-title overview-title-summary">\n              <h2>Todos os Projetos</h2>\n              <div id="overviewCompactSummary" class="project-summary-strip project-summary-inline" aria-label="Resumo dos projetos"></div>\n            </div>''', 1)
+
+          # Remove completamente o resumo/legenda dinâmica do Calendário.
+          html = html.replace('''            <div id="calendarCompactSummary" class="project-summary-strip" aria-label="Resumo dinâmico do calendário"></div>\n''', '', 1)
+
+          # Primeiro rótulo mais curto.
+          html = html.replace('["total", data.length, "projetos cadastrados"]', '["total", data.length, "cadastrados"]', 1)
+
+          # CSS refinado: sem barra externa; indicadores no padrão dos controles do sistema.
+          marker = '/* Resumos compactos v93 */'
+          extra = r'''
+/* Refinamento resumo v94 */
+#overviewPage .overview-title-summary {
+  display:flex;
+  align-items:center;
+  gap:16px;
+  min-width:0;
+  flex:1 1 auto;
+}
+#overviewPage .overview-title-summary > h2 {
+  flex:0 0 auto;
+  margin:0;
+}
+#overviewPage .project-summary-inline {
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:7px;
+  padding:0;
+  margin:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+  grid-column:auto;
+}
+#overviewPage .project-summary-inline .project-summary-item {
+  min-height:28px;
+  padding:4px 9px;
+  gap:6px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:var(--input-bg);
+  color:var(--text);
+  font-family:inherit;
+  font-size:.72rem;
+  font-weight:700;
+  line-height:1;
+  box-shadow:none;
+}
+body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-item {
+  background:rgba(248,252,255,.76);
+  border-color:rgba(83,166,201,.30);
+  color:#28465a;
+}
+#overviewPage .project-summary-inline .project-summary-item strong {
+  font-size:.76rem;
+  font-weight:900;
+}
+#overviewPage .project-summary-inline .project-summary-dot {
+  width:7px;
+  height:7px;
+  flex:0 0 7px;
+}
+#calendarCompactSummary { display:none !important; }
+@media(max-width:1100px){
+  #overviewPage .overview-title-summary { align-items:flex-start; flex-direction:column; gap:8px; }
+}
+'''
+          if '/* Refinamento resumo v94 */' not in html:
+              pos = html.find(marker)
+              if pos < 0:
+                  raise SystemExit('Marcador CSS não encontrado')
+              html = html[:pos] + extra + '\n' + html[pos:]
+
+          path.write_text(html, encoding='utf-8')
+          PY
+
+      - name: Validar JavaScript
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          import re
+          html=Path('Gestao-de-Projetos.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script[^>]*>([\s\S]*?)</script>', html)
+          for i,s in enumerate(scripts):
+              Path(f'/tmp/script_{i}.js').write_text(s, encoding='utf-8')
+          print(f'{len(scripts)} scripts extraídos')
+          PY
+          for f in /tmp/script_*.js; do node --check "$f"; done
+
+      - name: Commitar e remover workflow temporário
+        shell: bash
+        run: |
+          rm -f .github/workflows/patch-v94-clean.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Refinar resumo de projetos na visão geral"
+          git push
