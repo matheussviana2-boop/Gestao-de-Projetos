@@ -1,0 +1,149 @@
+name: Ajustar visual do calendário
+
+on:
+  push:
+    paths:
+      - '.github/workflows/calendar-visual-refine.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Aplicar ajustes visuais do calendário
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          path = Path('Gestao-de-Projetos.html')
+          html = path.read_text(encoding='utf-8')
+
+          css = r'''
+/* Refinamento visual do calendário */
+#calendarFilterSummary { display:none !important; }
+
+#calendarPage .calendar-filterbar {
+  border:1px solid var(--line) !important;
+  border-radius:16px !important;
+  background:var(--panel) !important;
+  box-shadow:0 8px 24px rgba(8,42,61,.05) !important;
+  overflow:visible;
+}
+body[data-theme="light"] #calendarPage .calendar-filterbar {
+  background:rgba(248,252,255,.82) !important;
+  border-color:rgba(59,163,201,.22) !important;
+}
+
+#calendarPage .calendar-filter-input,
+#calendarPage .calendar-filter-select,
+#calendarPage .calendar-filter-clear,
+#calendarPage select,
+#calendarPage input[type="search"] {
+  border:1px solid var(--line) !important;
+  border-radius:12px !important;
+  font-family:inherit !important;
+  font-size:.82rem !important;
+  min-height:38px;
+  box-shadow:none !important;
+}
+body[data-theme="light"] #calendarPage .calendar-filter-input,
+body[data-theme="light"] #calendarPage .calendar-filter-select,
+body[data-theme="light"] #calendarPage .calendar-filter-clear,
+body[data-theme="light"] #calendarPage select,
+body[data-theme="light"] #calendarPage input[type="search"] {
+  border-color:rgba(71,157,194,.30) !important;
+  background:rgba(248,252,255,.92) !important;
+}
+
+#calendarPage table {
+  border-collapse:separate !important;
+  border-spacing:0 !important;
+  border-radius:16px !important;
+  overflow:hidden !important;
+}
+#calendarPage table th,
+#calendarPage table td {
+  font-size:.78rem !important;
+  line-height:1.35 !important;
+}
+#calendarPage table th {
+  font-weight:800 !important;
+  letter-spacing:.01em;
+}
+#calendarPage table td strong,
+#calendarPage table td .project-name,
+#calendarPage table td .calendar-project-name {
+  font-size:.80rem !important;
+}
+
+/* Reforça a separação visual entre os meses sem pesar a grade. */
+#calendarPage table th,
+#calendarPage table td {
+  border-right:1px solid rgba(59,163,201,.18) !important;
+  border-bottom:1px solid rgba(59,163,201,.14) !important;
+}
+#calendarPage table th:last-child,
+#calendarPage table td:last-child { border-right:0 !important; }
+#calendarPage table tr:last-child td { border-bottom:0 !important; }
+
+body[data-theme="light"] #calendarPage table th,
+body[data-theme="light"] #calendarPage table td {
+  border-right-color:rgba(55,145,183,.24) !important;
+  border-bottom-color:rgba(55,145,183,.18) !important;
+}
+
+#calendarPage .gantt-wrap,
+#calendarPage .gantt-table-wrap,
+#calendarPage .calendar-table-wrap,
+#calendarPage .calendar-grid-wrap,
+#calendarPage .table-wrap {
+  border:1px solid var(--line) !important;
+  border-radius:16px !important;
+  overflow:hidden !important;
+}
+body[data-theme="light"] #calendarPage .gantt-wrap,
+body[data-theme="light"] #calendarPage .gantt-table-wrap,
+body[data-theme="light"] #calendarPage .calendar-table-wrap,
+body[data-theme="light"] #calendarPage .calendar-grid-wrap,
+body[data-theme="light"] #calendarPage .table-wrap {
+  border-color:rgba(59,163,201,.22) !important;
+}
+'''
+
+          if '/* Refinamento visual do calendário */' not in html:
+              idx = html.rfind('</style>')
+              if idx < 0:
+                  raise SystemExit('Não foi possível localizar </style>.')
+              html = html[:idx] + '\n' + css + '\n' + html[idx:]
+
+          path.write_text(html, encoding='utf-8')
+          PY
+
+      - name: Validar JavaScript
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          import re
+          html = Path('Gestao-de-Projetos.html').read_text(encoding='utf-8')
+          scripts = re.findall(r'<script[^>]*>([\s\S]*?)</script>', html)
+          for i, script in enumerate(scripts):
+              Path(f'/tmp/script_{i}.js').write_text(script, encoding='utf-8')
+          print(f'{len(scripts)} scripts extraídos')
+          PY
+          for f in /tmp/script_*.js; do node --check "$f"; done
+
+      - name: Commitar ajuste
+        shell: bash
+        run: |
+          rm -f .github/workflows/calendar-visual-refine.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Refinar visual do calendário"
+          git push
