@@ -1,132 +1,26 @@
-name: Patch resumo projetos v94 clean
-
+name: Patch resumo v94
 on:
   push:
     paths:
-      - '.github/workflows/patch-v94-clean.yml'
-
+      - .github/workflows/patch-v94-clean.yml
 permissions:
   contents: write
-
 jobs:
   patch:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Aplicar ajustes solicitados
-        shell: bash
+      - name: Patch
+        run: echo 'CmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aApwPVBhdGgoIkdlc3Rhby1kZS1Qcm9qZXRvcy5odG1sIikKaD1wLnJlYWRfdGV4dChlbmNvZGluZz0idXRmLTgiKQpoPWgucmVwbGFjZSgiPHRpdGxlPkNTQyBHZXN0w6NvIGRlIFByb2pldG9zIHwgdjkzPC90aXRsZT4iLCI8dGl0bGU+Q1NDIEdlc3TDp28gZGUgUHJvamV0b3MgfCB2OTQ8L3RpdGxlPiIsMSkKaD1oLnJlcGxhY2UoJyAgICAgIDxzZWN0aW9uIGlkPSJvdmVydmlld1BhZ2UiIGNsYXNzPSJkYXNoYm9hcmQtZ3JpZCBhcHAtcGFnZSBhY3RpdmUiPlxuICAgICAgICA8ZGl2IGlkPSJvdmVydmlld0NvbXBhY3RTdW1tYXJ5IiBjbGFzcz0icHJvamVjdC1zdW1tYXJ5LXN0cmlwIiBhcmlhLWxhYmVsPSJSZXN1bW8gZG9zIHByb2pldG9zIj48L2Rpdj5cbiAgICAgICAgPGFydGljbGUgY2xhc3M9InBhbmVsIHByb2plY3RzLXBhbmVsIj4nLCcgICAgICA8c2VjdGlvbiBpZD0ib3ZlcnZpZXdQYWdlIiBjbGFzcz0iZGFzaGJvYXJkLWdyaWQgYXBwLXBhZ2UgYWN0aXZlIj5cbiAgICAgICAgPGFydGljbGUgY2xhc3M9InBhbmVsIHByb2plY3RzLXBhbmVsIj4nLDEpCmg9aC5yZXBsYWNlKCcgICAgICAgICAgICA8ZGl2IGNsYXNzPSJwYW5lbC10aXRsZSI+XG4gICAgICAgICAgICAgIDxoMj5Ub2RvcyBvcyBQcm9qZXRvczwvaDI+XG4gICAgICAgICAgICA8L2Rpdj4nLCcgICAgICAgICAgICA8ZGl2IGNsYXNzPSJwYW5lbC10aXRsZSBvdmVydmlldy10aXRsZS1zdW1tYXJ5Ij5cbiAgICAgICAgICAgICAgPGgyPlRvZG9zIG9zIFByb2pldG9zPC9oMj5cbiAgICAgICAgICAgICAgPGRpdiBpZD0ib3ZlcnZpZXdDb21wYWN0U3VtbWFyeSIgY2xhc3M9InByb2plY3Qtc3VtbWFyeS1zdHJpcCBwcm9qZWN0LXN1bW1hcnktaW5saW5lIiBhcmlhLWxhYmVsPSJSZXN1bW8gZG9zIHByb2pldG9zIj48L2Rpdj5cbiAgICAgICAgICAgIDwvZGl2PicsMSkKaD1oLnJlcGxhY2UoJyAgICAgICAgICAgIDxkaXYgaWQ9ImNhbGVuZGFyQ29tcGFjdFN1bW1hcnkiIGNsYXNzPSJwcm9qZWN0LXN1bW1hcnktc3RyaXAiIGFyaWEtbGFiZWw9IlJlc3VtbyBkaW7Dom1pY28gZG8gY2FsZW5kw6FyaW8iPjwvZGl2PlxuJywnJywxKQpoPWgucmVwbGFjZSgnWyJ0b3RhbCIsIGRhdGEubGVuZ3RoLCAicHJvamV0b3MgY2FkYXN0cmFkb3MiXScsJ1sidG90YWwiLCBkYXRhLmxlbmd0aCwgImNhZGFzdHJhZG9zIl0nLDEpCmV4dHJhPScnJzxzdHlsZSBpZD0ic3VtbWFyeS1yZWZpbmVtZW50LXY5NCI+CiNvdmVydmlld1BhZ2UgLm92ZXJ2aWV3LXRpdGxlLXN1bW1hcnl7ZGlzcGxheTpmbGV4O2FsaWduLWl0ZW1zOmNlbnRlcjtnYXA6MTZweDttaW4td2lkdGg6MDtmbGV4OjEgMSBhdXRvfQojb3ZlcnZpZXdQYWdlIC5vdmVydmlldy10aXRsZS1zdW1tYXJ5Pmgye2ZsZXg6MCAwIGF1dG87bWFyZ2luOjB9CiNvdmVydmlld1BhZ2UgLnByb2plY3Qtc3VtbWFyeS1pbmxpbmV7ZGlzcGxheTpmbGV4O2FsaWduLWl0ZW1zOmNlbnRlcjtmbGV4LXdyYXA6d3JhcDtnYXA6N3B4O3BhZGRpbmc6MDttYXJnaW46MDtib3JkZXI6MDtib3JkZXItcmFkaXVzOjA7YmFja2dyb3VuZDp0cmFuc3BhcmVudDtib3gtc2hhZG93Om5vbmU7Z3JpZC1jb2x1bW46YXV0b30KI292ZXJ2aWV3UGFnZSAucHJvamVjdC1zdW1tYXJ5LWlubGluZSAucHJvamVjdC1zdW1tYXJ5LWl0ZW17bWluLWhlaWdodDoyOHB4O3BhZGRpbmc6NHB4IDlweDtnYXA6NnB4O2JvcmRlcjoxcHggc29saWQgdmFyKC0tbGluZSk7Ym9yZGVyLXJhZGl1czo5cHg7YmFja2dyb3VuZDp2YXIoLS1pbnB1dC1iZyk7Y29sb3I6dmFyKC0tdGV4dCk7Zm9udC1mYW1pbHk6aW5oZXJpdDtmb250LXNpemU6LjcycmVtO2ZvbnQtd2VpZ2h0OjcwMDtsaW5lLWhlaWdodDoxO2JveC1zaGFkb3c6bm9uZX0KYm9keVtkYXRhLXRoZW1lPSJsaWdodCJdICNvdmVydmlld1BhZ2UgLnByb2plY3Qtc3VtbWFyeS1pbmxpbmUgLnByb2plY3Qtc3VtbWFyeS1pdGVte2JhY2tncm91bmQ6cmdiYSgyNDgsMjUyLDI1NSwuNzYpO2JvcmRlci1jb2xvcjpyZ2JhKDgzLDE2NiwyMDEsLjMwKTtjb2xvcjojMjg0NjVhfQojb3ZlcnZpZXdQYWdlIC5wcm9qZWN0LXN1bW1hcnktaW5saW5lIC5wcm9qZWN0LXN1bW1hcnktaXRlbSBzdHJvbmd7Zm9udC1zaXplOi43NnJlbTtmb250LXdlaWdodDo5MDB9CiNvdmVydmlld1BhZ2UgLnByb2plY3Qtc3VtbWFyeS1pbmxpbmUgLnByb2plY3Qtc3VtbWFyeS1kb3R7d2lkdGg6N3B4O2hlaWdodDo3cHg7ZmxleDowIDAgN3B4fQojY2FsZW5kYXJDb21wYWN0U3VtbWFyeXtkaXNwbGF5Om5vbmUhaW1wb3J0YW50fQpAbWVkaWEobWF4LXdpZHRoOjExMDBweCl7I292ZXJ2aWV3UGFnZSAub3ZlcnZpZXctdGl0bGUtc3VtbWFyeXthbGlnbi1pdGVtczpmbGV4LXN0YXJ0O2ZsZXgtZGlyZWN0aW9uOmNvbHVtbjtnYXA6OHB4fX0KPC9zdHlsZT4KJycnCmlmICdpZD0ic3VtbWFyeS1yZWZpbmVtZW50LXY5NCInIG5vdCBpbiBoOgogICAgaD1oLnJlcGxhY2UoIjwvaGVhZD4iLGV4dHJhKyI8L2hlYWQ+IiwxKQpwLndyaXRlX3RleHQoaCxlbmNvZGluZz0idXRmLTgiKQo=' | base64 -d | python
+      - name: Validate JS
         run: |
-          python <<'PY'
-          from pathlib import Path
-
-          path = Path('Gestao-de-Projetos.html')
-          html = path.read_text(encoding='utf-8')
-
-          html = html.replace('<title>CSC Gestão de Projetos | v93</title>', '<title>CSC Gestão de Projetos | v94</title>', 1)
-
-          # Remove resumo solto acima do painel da Visão Geral.
-          html = html.replace('''      <section id="overviewPage" class="dashboard-grid app-page active">\n        <div id="overviewCompactSummary" class="project-summary-strip" aria-label="Resumo dos projetos"></div>\n        <article class="panel projects-panel">''', '''      <section id="overviewPage" class="dashboard-grid app-page active">\n        <article class="panel projects-panel">''', 1)
-
-          # Coloca o resumo na mesma linha de Todos os Projetos.
-          html = html.replace('''            <div class="panel-title">\n              <h2>Todos os Projetos</h2>\n            </div>''', '''            <div class="panel-title overview-title-summary">\n              <h2>Todos os Projetos</h2>\n              <div id="overviewCompactSummary" class="project-summary-strip project-summary-inline" aria-label="Resumo dos projetos"></div>\n            </div>''', 1)
-
-          # Remove completamente o resumo/legenda dinâmica do Calendário.
-          html = html.replace('''            <div id="calendarCompactSummary" class="project-summary-strip" aria-label="Resumo dinâmico do calendário"></div>\n''', '', 1)
-
-          # Primeiro rótulo mais curto.
-          html = html.replace('["total", data.length, "projetos cadastrados"]', '["total", data.length, "cadastrados"]', 1)
-
-          # CSS refinado: sem barra externa; indicadores no padrão dos controles do sistema.
-          marker = '/* Resumos compactos v93 */'
-          extra = r'''
-/* Refinamento resumo v94 */
-#overviewPage .overview-title-summary {
-  display:flex;
-  align-items:center;
-  gap:16px;
-  min-width:0;
-  flex:1 1 auto;
-}
-#overviewPage .overview-title-summary > h2 {
-  flex:0 0 auto;
-  margin:0;
-}
-#overviewPage .project-summary-inline {
-  display:flex;
-  align-items:center;
-  flex-wrap:wrap;
-  gap:7px;
-  padding:0;
-  margin:0;
-  border:0;
-  border-radius:0;
-  background:transparent;
-  box-shadow:none;
-  grid-column:auto;
-}
-#overviewPage .project-summary-inline .project-summary-item {
-  min-height:28px;
-  padding:4px 9px;
-  gap:6px;
-  border:1px solid var(--line);
-  border-radius:9px;
-  background:var(--input-bg);
-  color:var(--text);
-  font-family:inherit;
-  font-size:.72rem;
-  font-weight:700;
-  line-height:1;
-  box-shadow:none;
-}
-body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-item {
-  background:rgba(248,252,255,.76);
-  border-color:rgba(83,166,201,.30);
-  color:#28465a;
-}
-#overviewPage .project-summary-inline .project-summary-item strong {
-  font-size:.76rem;
-  font-weight:900;
-}
-#overviewPage .project-summary-inline .project-summary-dot {
-  width:7px;
-  height:7px;
-  flex:0 0 7px;
-}
-#calendarCompactSummary { display:none !important; }
-@media(max-width:1100px){
-  #overviewPage .overview-title-summary { align-items:flex-start; flex-direction:column; gap:8px; }
-}
-'''
-          if '/* Refinamento resumo v94 */' not in html:
-              pos = html.find(marker)
-              if pos < 0:
-                  raise SystemExit('Marcador CSS não encontrado')
-              html = html[:pos] + extra + '\n' + html[pos:]
-
-          path.write_text(html, encoding='utf-8')
-          PY
-
-      - name: Validar JavaScript
-        shell: bash
-        run: |
-          python <<'PY'
-          from pathlib import Path
-          import re
-          html=Path('Gestao-de-Projetos.html').read_text(encoding='utf-8')
-          scripts=re.findall(r'<script[^>]*>([\s\S]*?)</script>', html)
-          for i,s in enumerate(scripts):
-              Path(f'/tmp/script_{i}.js').write_text(s, encoding='utf-8')
-          print(f'{len(scripts)} scripts extraídos')
-          PY
-          for f in /tmp/script_*.js; do node --check "$f"; done
-
-      - name: Commitar e remover workflow temporário
-        shell: bash
+          python -c "from pathlib import Path; import re; h=Path('Gestao-de-Projetos.html').read_text(encoding='utf-8'); [Path('/tmp/s%d.js'%i).write_text(s,encoding='utf-8') for i,s in enumerate(re.findall(r'<script[^>]*>([\\s\\S]*?)</script>',h))]"
+          for f in /tmp/s*.js; do node --check "$f"; done
+      - name: Commit
         run: |
           rm -f .github/workflows/patch-v94-clean.yml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add -A
-          git commit -m "Refinar resumo de projetos na visão geral"
+          git commit -m 'Refinar resumo de projetos na visão geral'
           git push
