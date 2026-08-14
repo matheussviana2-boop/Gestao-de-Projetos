@@ -7,7 +7,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <title>CSC Gestão de Projetos | v93</title>
+  <title>CSC Gestço de Projetos | v94</title>
   <style>
     :root {
       --bg: #030a12;
@@ -8067,6 +8067,17 @@ body[data-theme="light"] #calendarCompactSummary { background:rgba(255,255,255,.
 
   </style>
 
+<style id="summary-refinement-v94">
+#overviewPage .overview-title-summary{display:flex;align-items:center;gap:16px;min-width:0;flex:1 1 auto}
+#overviewPage .overview-title-summary>h2{flex:0 0 auto;margin:0}
+#overviewPage .project-summary-inline{display:flex;align-items:center;flex-wrap:wrap;gap:7px;padding:0;margin:0;border:0;border-radius:0;background:transparent;box-shadow:none;grid-column:auto}
+#overviewPage .project-summary-inline .project-summary-item{min-height:28px;padding:4px 9px;gap:6px;border:1px solid var(--line);border-radius:9px;background:var(--input-bg);color:var(--text);font-family:inherit;font-size:.72rem;font-weight:700;line-height:1;box-shadow:none}
+body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-item{background:rgba(248,252,255,.76);border-color:rgba(83,166,201,.30);color:#28465a}
+#overviewPage .project-summary-inline .project-summary-item strong{font-size:.76rem;font-weight:900}
+#overviewPage .project-summary-inline .project-summary-dot{width:7px;height:7px;flex:0 0 7px}
+#calendarCompactSummary{display:none!important}
+@media(max-width:1100px){#overviewPage .overview-title-summary{align-items:flex-start;flex-direction:column;gap:8px}}
+</style>
 </head>
 <body data-theme="light" class="auth-pending session-checking">
 
@@ -8277,11 +8288,11 @@ body[data-theme="light"] #calendarCompactSummary { background:rgba(255,255,255,.
       </header>
 
       <section id="overviewPage" class="dashboard-grid app-page active">
-        <div id="overviewCompactSummary" class="project-summary-strip" aria-label="Resumo dos projetos"></div>
         <article class="panel projects-panel">
           <div class="panel-header">
-            <div class="panel-title">
+            <div class="panel-title overview-title-summary">
               <h2>Todos os Projetos</h2>
+              <div id="overviewCompactSummary" class="project-summary-strip project-summary-inline" aria-label="Resumo dos projetos"></div>
             </div>
             <div class="toolbar">
               <label class="search" aria-label="Buscar projetos">
@@ -8609,7 +8620,6 @@ body[data-theme="light"] #calendarCompactSummary { background:rgba(255,255,255,.
               <div class="calendar-kpi paused"><div class="calendar-kpi-main"><span class="calendar-kpi-label">Pausados</span><strong id="calendarKpiPaused" class="calendar-kpi-value">0</strong></div><span class="calendar-kpi-dot"></span></div>
               <div class="calendar-kpi delayed"><div class="calendar-kpi-main"><span class="calendar-kpi-label">Em atraso</span><strong id="calendarKpiDelayed" class="calendar-kpi-value">0</strong></div><span class="calendar-kpi-dot"></span></div>
             </div>
-            <div id="calendarCompactSummary" class="project-summary-strip" aria-label="Resumo dinâmico do calendário"></div>
             <div class="calendar-filterbar">
               <div class="calendar-filter-field"><label for="calendarSearch">Projeto</label><input id="calendarSearch" class="calendar-filter-input" type="search" placeholder="Buscar pelo nome do projeto..." autocomplete="off" /></div>
               <div class="calendar-filter-field"><label for="calendarAreaFilter">Área / tipo</label><select id="calendarAreaFilter" class="calendar-filter-select"><option value="">Todas as áreas</option></select></div>
@@ -11057,7 +11067,7 @@ body[data-theme="light"] #calendarCompactSummary { background:rgba(255,255,255,.
       const data = Array.isArray(list) ? list : [];
       const count = status => data.filter(project => projectSummaryStatus(project?.status) === projectSummaryStatus(status)).length;
       const values = [
-        ["total", data.length, "projetos cadastrados"],
+        ["total", data.length, "cadastrados"],
         ["completed", count("Concluído"), "concluídos"],
         ["nodate", data.filter(projectSummaryNoDate).length, "sem data"],
         ["progress", count("Em andamento"), "em andamento"],
