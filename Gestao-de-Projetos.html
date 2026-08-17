@@ -12249,6 +12249,32 @@ body[data-theme="light"] #statusPieSection {
   border-top-color:rgba(55,145,183,.20) !important;
 }
 
+
+/* Nomes completos nas legendas dos graficos */
+@media (min-width:1181px) {
+  #ownerPieSection .pie-legend-item,
+  #statusPieSection .pie-legend-item {
+    grid-template-columns:10px minmax(0,1fr) auto !important;
+    justify-content:stretch !important;
+    column-gap:8px !important;
+  }
+  #ownerPieSection .pie-legend-name,
+  #statusPieSection .pie-legend-name {
+    max-width:none !important;
+    width:auto !important;
+    white-space:normal !important;
+    overflow:visible !important;
+    text-overflow:clip !important;
+    line-height:1.2 !important;
+    overflow-wrap:anywhere !important;
+  }
+  #ownerPieSection .pie-legend-value,
+  #statusPieSection .pie-legend-value {
+    min-width:auto !important;
+    white-space:nowrap !important;
+  }
+}
+
 </style>
 <script data-csc-date-validation-v86>
 (() => {
