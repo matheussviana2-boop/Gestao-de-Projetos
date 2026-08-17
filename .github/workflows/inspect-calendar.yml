@@ -1,4 +1,4 @@
-name: Aplicar resumo compacto v93
+name: Equalizar graficos de divisao
 on:
   push:
     paths:
@@ -10,128 +10,90 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Aplicar resumo compacto e legenda dinamica
+      - name: Equalizar graficos
         shell: bash
         run: |
           python <<'PY'
           from pathlib import Path
-          import re, textwrap
-          p = Path('Gestao_de_Projetos.html')
+          p = Path('Gestao-de-Projetos.html')
           s = p.read_text(encoding='utf-8')
-          s = s.replace('<title>CSC Gestão de Projetos | v92</title>', '<title>CSC Gestão de Projetos | v93</title>', 1)
-          css = textwrap.dedent('''
-              /* Resumos compactos v93 */
-              #calendarPage .calendar-kpis { display:none !important; }
-              .project-summary-strip {
-                grid-column:1 / -1; display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px;
-                padding:10px 12px; border:1px solid var(--line); border-radius:var(--radius);
-                background:var(--panel); box-shadow:0 10px 28px rgba(8,42,61,.05);
-              }
-              body[data-theme="light"] .project-summary-strip {
-                background:rgba(248,252,255,.82); border-color:rgba(59,163,201,.20);
-                box-shadow:0 8px 24px rgba(22,68,94,.05);
-              }
-              .project-summary-item {
-                display:inline-flex; align-items:center; gap:7px; min-height:30px; padding:5px 9px;
-                border:1px solid var(--line); border-radius:10px; background:var(--surface-soft);
-                color:var(--text); font-size:.72rem; font-weight:750; line-height:1; white-space:nowrap;
-              }
-              body[data-theme="light"] .project-summary-item {
-                background:rgba(255,255,255,.72); border-color:rgba(66,157,191,.18); color:#28485a;
-              }
-              .project-summary-dot { width:8px; height:8px; border-radius:3px; background:#2aa8c8; flex:0 0 auto; }
-              .project-summary-item.total .project-summary-dot { background:#238faf; }
-              .project-summary-item.completed .project-summary-dot { background:#2eae78; }
-              .project-summary-item.nodate .project-summary-dot { background:#9aaab3; }
-              .project-summary-item.progress .project-summary-dot { background:#2aa8c8; }
-              .project-summary-item.paused .project-summary-dot { background:#e48a17; }
-              .project-summary-item.delayed .project-summary-dot { background:#dc4c5d; }
-              .project-summary-item strong { font-size:.82rem; font-weight:900; color:inherit; }
-              #overviewCompactSummary { margin-bottom:0; }
-              #calendarCompactSummary { margin:0 0 10px; padding:8px 10px; border-radius:12px; box-shadow:none; background:transparent; }
-              body[data-theme="light"] #calendarCompactSummary { background:rgba(255,255,255,.34); }
-              #calendarPage .calendar-dashboard { padding:12px 18px 4px; }
-              #calendarPage .calendar-filterbar { border-color:var(--line); border-radius:var(--radius); box-shadow:none; }
-              #calendarPage .calendar-filter-input, #calendarPage .calendar-filter-select { border-color:var(--line); }
-              @media(max-width:760px){
-                .project-summary-strip{gap:6px;padding:8px;}
-                .project-summary-item{font-size:.68rem;padding:5px 8px;}
-              }
-          ''')
-          if '/* Resumos compactos v93 */' not in s:
-              s = s.replace('</style>\n\n</head>', css + '\n  </style>\n\n</head>', 1)
-          overview_anchor = '      <section id="overviewPage" class="dashboard-grid app-page active">\n        <article class="panel projects-panel">'
-          overview_insert = '      <section id="overviewPage" class="dashboard-grid app-page active">\n        <div id="overviewCompactSummary" class="project-summary-strip" aria-label="Resumo dos projetos"></div>\n        <article class="panel projects-panel">'
-          if 'id="overviewCompactSummary"' not in s:
-              if overview_anchor not in s: raise SystemExit('Âncora da visão geral não encontrada')
-              s = s.replace(overview_anchor, overview_insert, 1)
-          calendar_anchor = '            </div>\n            <div class="calendar-filterbar">\n'
-          calendar_insert = '            </div>\n            <div id="calendarCompactSummary" class="project-summary-strip" aria-label="Resumo dinâmico do calendário"></div>\n            <div class="calendar-filterbar">\n'
-          if 'id="calendarCompactSummary"' not in s:
-              pos = s.find('id="calendarKpiDelayed"')
-              if pos < 0: raise SystemExit('Indicadores antigos não encontrados')
-              after = s.find(calendar_anchor, pos)
-              if after < 0: raise SystemExit('Barra de filtros não encontrada')
-              s = s[:after] + s[after:].replace(calendar_anchor, calendar_insert, 1)
-          helper = textwrap.dedent(r'''
-              function projectSummaryStatus(value) {
-                return normalizeCalendarFilter(value);
-              }
-              function projectSummaryNoDate(project) {
-                const explicit = project && (project.semData === true || String(project.semData || "").toLowerCase() === "true");
-                const start = String(project?.dataInicio || project?.start || "").trim();
-                const end = String(project?.dataFim || project?.end || "").trim();
-                return explicit || (!start && !end);
-              }
-              function renderProjectSummaryStrip(targetId, list) {
-                const target = document.getElementById(targetId);
-                if (!target) return;
-                const data = Array.isArray(list) ? list : [];
-                const count = status => data.filter(project => projectSummaryStatus(project?.status) === projectSummaryStatus(status)).length;
-                const values = [
-                  ["total", data.length, "projetos cadastrados"],
-                  ["completed", count("Concluído"), "concluídos"],
-                  ["nodate", data.filter(projectSummaryNoDate).length, "sem data"],
-                  ["progress", count("Em andamento"), "em andamento"],
-                  ["paused", count("Pausado"), "pausados"],
-                  ["delayed", count("Em atraso"), "em atraso"]
-                ];
-                target.innerHTML = values.map(([type,value,label]) => `<span class="project-summary-item ${type}"><span class="project-summary-dot"></span><strong>${value}</strong> ${label}</span>`).join("");
-              }
-          ''')
-          helper = textwrap.indent(helper.strip() + '\n\n', '    ')
-          if 'function renderProjectSummaryStrip' not in s:
-              marker = '    function updateCalendarIndicators(items) {'
-              if marker not in s: raise SystemExit('Indicadores não encontrados')
-              s = s.replace(marker, helper + marker, 1)
-          pattern = re.compile(r'    function updateCalendarIndicators\(items\) \{.*?\n    \}\n\n    function renderCalendar\(\) \{', re.S)
-          replacement = '''    function updateCalendarIndicators(items) {
-              const list = items.map(item => item.project);
-              renderProjectSummaryStrip("calendarCompactSummary", list);
-              const summary = document.getElementById("calendarFilterSummary");
-              if (summary) summary.textContent = `Exibindo ${list.length} projeto${list.length === 1 ? "" : "s"} com os filtros atuais.`;
+          css = '''
+          /* Equalizacao graficos laterais */
+          @media (min-width:1181px) {
+            #ownerPieBody.pie-panel-body {
+              display:grid !important;
+              grid-template-columns:1fr !important;
+              grid-template-rows:repeat(2,minmax(0,1fr)) !important;
+              gap:0 !important;
+              align-content:stretch !important;
             }
-
-            function renderCalendar() {'''
-          replacement = textwrap.dedent(replacement)
-          replacement = textwrap.indent(replacement, '    ')[4:]
-          s, n = pattern.subn(replacement, s, count=1)
-          if n != 1: raise SystemExit('Falha ao trocar indicadores do calendário')
-          render_anchor = '    function renderProjects() {\n      syncAllProjectDeadlines();\n'
-          render_insert = '    function renderProjects() {\n      syncAllProjectDeadlines();\n      renderProjectSummaryStrip("overviewCompactSummary", projects);\n'
-          if 'renderProjectSummaryStrip("overviewCompactSummary", projects);' not in s:
-              if render_anchor not in s: raise SystemExit('renderProjects não encontrado')
-              s = s.replace(render_anchor, render_insert, 1)
-          p.write_text(s, encoding='utf-8')
+            #ownerPieSection,
+            #statusPieSection {
+              min-height:0 !important;
+              height:100% !important;
+              box-sizing:border-box !important;
+              display:grid !important;
+              grid-template-columns:165px minmax(0,1fr) !important;
+              grid-template-rows:auto 1fr !important;
+              column-gap:16px !important;
+              row-gap:8px !important;
+              align-items:center !important;
+              align-content:center !important;
+              padding:16px 0 !important;
+            }
+            #ownerPieSection .pie-section-header,
+            #statusPieSection .pie-section-header {
+              grid-column:1 / -1 !important;
+              margin:0 !important;
+            }
+            #ownerPieSection .pie-chart-wrap-compact,
+            #statusPieSection .pie-chart-wrap-compact {
+              width:165px !important;
+              min-height:170px !important;
+              height:170px !important;
+              display:grid !important;
+              place-items:center !important;
+              justify-self:center !important;
+            }
+            #ownerPieChart,
+            #statusPieChart {
+              width:150px !important;
+              height:150px !important;
+              min-width:150px !important;
+              min-height:150px !important;
+              max-width:150px !important;
+              max-height:150px !important;
+              aspect-ratio:1 / 1 !important;
+            }
+            #ownerPieSection .pie-section-side,
+            #statusPieSection .pie-section-side {
+              width:100% !important;
+              max-width:none !important;
+              align-self:center !important;
+            }
+            #statusPieSection {
+              border-top:1px solid rgba(59,163,201,.18) !important;
+            }
+          }
+          body[data-theme="light"] #statusPieSection {
+            border-top-color:rgba(55,145,183,.20) !important;
+          }
+          '''
+          if '/* Equalizacao graficos laterais */' not in s:
+              pos = s.rfind('</style>')
+              if pos < 0:
+                  raise SystemExit('style final nao encontrado')
+              s = s[:pos] + css + '\n' + s[pos:]
+              p.write_text(s, encoding='utf-8')
           PY
       - name: Validar JavaScript
         shell: bash
         run: |
           node <<'NODE'
           const fs = require('fs');
-          const s = fs.readFileSync('Gestao_de_Projetos.html','utf8');
+          const s = fs.readFileSync('Gestao-de-Projetos.html','utf8');
           const blocks = [...s.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)].map(m => m[1]);
-          blocks.forEach((b,i) => { fs.writeFileSync(`/tmp/v93-${i}.js`, b); require('child_process').execFileSync('node',['--check',`/tmp/v93-${i}.js`],{stdio:'inherit'}); });
+          blocks.forEach((b,i) => { fs.writeFileSync(`/tmp/equal-${i}.js`, b); require('child_process').execFileSync('node',['--check',`/tmp/equal-${i}.js`],{stdio:'inherit'}); });
           console.log(`JavaScript OK: ${blocks.length} blocos`);
           NODE
       - name: Publicar
@@ -139,6 +101,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Gestao_de_Projetos.html
-          git commit -m "Refinar resumos de status e legenda do calendário" || exit 0
+          git add Gestao-de-Projetos.html
+          git commit -m "Equalizar tamanho dos graficos laterais" || exit 0
           git push
