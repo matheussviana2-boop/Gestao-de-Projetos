@@ -12187,6 +12187,68 @@ body[data-theme="light"] #calendarPage .table-wrap {
   border-color:rgba(59,163,201,.22) !important;
 }
 
+
+/* Equalizacao graficos laterais */
+@media (min-width:1181px) {
+  #ownerPieBody.pie-panel-body {
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    grid-template-rows:repeat(2,minmax(0,1fr)) !important;
+    gap:0 !important;
+    align-content:stretch !important;
+  }
+  #ownerPieSection,
+  #statusPieSection {
+    min-height:0 !important;
+    height:100% !important;
+    box-sizing:border-box !important;
+    display:grid !important;
+    grid-template-columns:165px minmax(0,1fr) !important;
+    grid-template-rows:auto 1fr !important;
+    column-gap:16px !important;
+    row-gap:8px !important;
+    align-items:center !important;
+    align-content:center !important;
+    padding:16px 0 !important;
+  }
+  #ownerPieSection .pie-section-header,
+  #statusPieSection .pie-section-header {
+    grid-column:1 / -1 !important;
+    margin:0 !important;
+  }
+  #ownerPieSection .pie-chart-wrap-compact,
+  #statusPieSection .pie-chart-wrap-compact {
+    width:165px !important;
+    min-height:170px !important;
+    height:170px !important;
+    display:grid !important;
+    place-items:center !important;
+    justify-self:center !important;
+  }
+  #ownerPieChart,
+  #statusPieChart {
+    width:150px !important;
+    height:150px !important;
+    min-width:150px !important;
+    min-height:150px !important;
+    max-width:150px !important;
+    max-height:150px !important;
+    aspect-ratio:1 / 1 !important;
+  }
+  #ownerPieSection .pie-section-side,
+  #statusPieSection .pie-section-side {
+    width:100% !important;
+    max-width:none !important;
+    align-self:center !important;
+  }
+  #statusPieSection {
+    border-top:1px solid rgba(59,163,201,.18) !important;
+  }
+}
+body[data-theme="light"] #statusPieSection {
+  border-top-color:rgba(55,145,183,.20) !important;
+}
+
 </style>
 <script data-csc-date-validation-v86>
 (() => {
