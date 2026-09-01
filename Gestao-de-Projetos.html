@@ -8961,7 +8961,7 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
     const USERS_KEY = "cscUsersV1";
     const THEME_KEY = "cscThemeV1"; // mantido apenas por compatibilidade
     const APP_CACHE_VERSION_KEY = "cscAppCacheVersionV1";
-    const APP_CACHE_VERSION = "cache-2026-09-01-02";
+    const APP_CACHE_VERSION = "cache-2026-09-01-03";
 
     // Nova publicação => invalida somente os caches locais de dados.
     // A sessão autenticada permanece ativa e os dados são recarregados do backend.
@@ -9487,23 +9487,19 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
     }
 
     function getOwnerCounts() {
-      const counts = new Map();
+      const countsByIdentity = new Map();
 
       projects.forEach(project => {
-        const participantMap = new Map();
-
-        getProjectParticipants(project).forEach(participant => {
-          const canonical = canonicalUserName(participant) || "Não informado";
-          const key = normalizeCalendarFilter(canonical);
-          if (!participantMap.has(key)) participantMap.set(key, canonical);
-        });
-
-        participantMap.forEach(owner => {
-          counts.set(owner, (counts.get(owner) || 0) + 1);
-        });
+        const owner = canonicalUserName(project?.owner) || String(project?.owner || "Não informado").trim() || "Não informado";
+        const key = normalizeCalendarFilter(owner);
+        const current = countsByIdentity.get(key) || { name: owner, count: 0 };
+        current.name = canonicalUserName(current.name) || owner;
+        current.count += 1;
+        countsByIdentity.set(key, current);
       });
 
-      return [...counts.entries()]
+      return [...countsByIdentity.values()]
+        .map(item => [item.name, item.count])
         .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "pt-BR"));
     }
 
@@ -12127,25 +12123,35 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
     }
 
     function mapApiProject(project, updates = [], requests = []) {
-      const owner = project.responsavel || "Não informado";
+      const rawOwner = project.responsavel || "Não informado";
+      const owner = canonicalUserName(rawOwner) || rawOwner;
+
       const projectUpdates = updates
         .filter(item => String(item.projetoId) === String(project.id))
-        .map(item => ({
-          id: item.id,
-          dateTime: item.criadoEm ? new Date(item.criadoEm).toLocaleString("pt-BR") : "",
-          actor: item.usuarioNome || "Sistema",
-          type: item.tipo || "update",
-          title: item.titulo || "Atualização",
-          note: item.descricao || "",
-          data: item.dadosJson || {}
-        }));
+        .map(item => {
+          const rawActor = item.usuarioNome || "Sistema";
+          const actor = canonicalUserName(rawActor) || rawActor;
+          let note = item.descricao || "";
+          if (rawActor && actor && rawActor !== actor && note.includes(rawActor)) {
+            note = note.split(rawActor).join(actor);
+          }
+          return {
+            id: item.id,
+            dateTime: item.criadoEm ? new Date(item.criadoEm).toLocaleString("pt-BR") : "",
+            actor,
+            type: item.tipo || "update",
+            title: item.titulo || "Atualização",
+            note,
+            data: item.dadosJson || {}
+          };
+        });
       const projectRequests = requests
         .filter(item => String(item.projetoId) === String(project.id))
         .map(item => ({
           id: item.id,
           userId: item.usuarioId,
-          user: item.usuarioNome,
-          userName: item.usuarioNome,
+          user: canonicalUserName(item.usuarioNome) || item.usuarioNome,
+          userName: canonicalUserName(item.usuarioNome) || item.usuarioNome,
           status: item.status,
           requestedAt: item.solicitadoEm,
           decidedAt: item.decididoEm,
@@ -12162,11 +12168,13 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
         owner,
         initials: initialsFromName(owner),
         avatar: "a2",
-        members: normalizeMembers(project.participantes),
+        members: normalizeMembers(project.participantes)
+          .map(name => canonicalUserName(name) || name)
+          .filter((name, index, list) => name && list.findIndex(item => samePerson(item, name)) === index && !samePerson(name, owner)),
         status: project.status || "Em andamento",
         progress: Number(project.progresso || 0),
         link: project.linkSistema || "",
-        creator: project.criadoPor || owner,
+        creator: canonicalUserName(project.criadoPor || owner) || project.criadoPor || owner,
         updatedAt: project.atualizadoEm ? new Date(project.atualizadoEm).toLocaleString("pt-BR") : "",
         icon: "i-folder",
         orangeIcon: ["Pausado", "Em atraso"].includes(project.status),
@@ -12186,12 +12194,28 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
     }
 
     function applyBootstrapData(result) {
+      // Primeiro atualiza a fonte oficial de usuários. Assim nomes antigos/corrompidos
+      // dos projetos são normalizados contra o cadastro correto antes da renderização.
+      if (Array.isArray(result.users) && result.users.length && currentUser?.isAdmin) {
+        const previousUsers = [...users];
+        users = result.users.map(mapApiUser);
+        if (!users.some(user => String(user.id) === String(currentUser.id))) users.unshift(currentUser);
+        users = assignDistinctAvatarColors(users, previousUsers);
+        currentUser = users.find(user =>
+          (currentUser?.id && String(user.id) === String(currentUser.id)) ||
+          (currentUser?.email && String(user.email).toLowerCase() === String(currentUser.email).toLowerCase())
+        ) || currentUser;
+        persistUsers();
+        refreshUserSwitcher();
+        renderSystemUsers();
+        renderCurrentUser();
+      }
+
       // Preserva o marcador "já li estas atualizações" de cada projeto.
       const readState = new Map(projects.map(project => [String(project.id), project.readUpdatesBy]));
-      // Indexa o histórico uma única vez. Antes cada projeto varria a lista
-      // completa de atualizações (custo projetos x atualizações).
       const updatesByProject = groupByProject(result.updates);
       const requestsByProject = groupByProject(result.requests);
+
       projects = (result.projects || []).map(project => {
         const key = String(project.id);
         const mapped = mapApiProject(project, updatesByProject.get(key) || [], requestsByProject.get(key) || []);
@@ -12199,20 +12223,12 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
         if (previous && typeof previous === "object") mapped.readUpdatesBy = previous;
         return mapped;
       });
+
       syncAllProjectDeadlines();
-      persistProjects();
+      flushProjectsCache();
       renderAreaOptions();
       renderProjects();
       updateNotificationBadge();
-
-      if (Array.isArray(result.users) && currentUser?.isAdmin) {
-        const previousUsers = [...users];
-        users = result.users.map(mapApiUser);
-        if (!users.some(user => user.id === currentUser.id)) users.unshift(currentUser);
-        users = assignDistinctAvatarColors(users, previousUsers);
-        refreshUserSwitcher();
-        renderSystemUsers();
-      }
       return projects;
     }
 
