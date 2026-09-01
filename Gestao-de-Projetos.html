@@ -6747,7 +6747,7 @@
   <style>
     /* ===== Ajuste v57: edição cadastral separada da atualização de andamento ===== */
     #cadastrosPage .registration-status-progress-field {
-      display: none !important;
+      display: grid !important;
     }
 
     #cadastrosPage .registration-form-grid {
@@ -9121,6 +9121,10 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
       return isProjectAuthority(project);
     }
 
+    function requestUserName(request) {
+      return String(request?.user || request?.userName || "Usuário").trim() || "Usuário";
+    }
+
     function getPendingRequest(project, userName = currentUser.name) {
       return (project.joinRequests || []).find(request =>
         samePerson(request.user || request.userName, userName) && request.status === "Pendente"
@@ -9909,12 +9913,12 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
         </div>
         <div class="request-list">
           ${pending.map(request => {
-            const user = avatarForName(request.user);
+            const user = avatarForName(requestUserName(request));
             return `
               <div class="request-item">
                 <div class="avatar small ${user.avatar}">${escapeHtml(user.initials)}</div>
                 <div class="request-item-info">
-                  <strong>${escapeHtml(request.user)}</strong>
+                  <strong>${escapeHtml(requestUserName(request))}</strong>
                   <small>Solicitado em ${escapeHtml(request.requestedAt)}</small>
                 </div>
                 <div class="request-actions">
@@ -10243,9 +10247,11 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
 
     function openUpdateModal(projectId) {
       const project = projects.find(item => String(item.id) === String(projectId));
-      if (!project) return;
-
+      if (!project) return showToast("Projeto não encontrado.");
       activeProjectId = projectId;
+      openDialog(updateModal);
+
+      try {
       document.getElementById("updateProjectName").textContent = project.name;
       document.getElementById("updateProjectMeta").textContent =
         `${project.area} · Responsável principal: ${project.owner}`;
@@ -10265,7 +10271,11 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
       renderAccessState(project);
       renderStructuralManagement(project);
       updateReasonRequirement(project);
-      openDialog(updateModal);
+      } catch (error) {
+        console.error("Falha ao abrir projeto:", error);
+        closeDialog(updateModal);
+        showToast("Não foi possível abrir os detalhes deste projeto.");
+      }
     }
 
     async function requestProjectAccess(projectId) {
@@ -10706,14 +10716,14 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
 
       empty.hidden = true;
       list.innerHTML = items.map(({ project, request }) => {
-        const user = avatarForName(request.user);
+        const user = avatarForName(requestUserName(request));
         const pending = request.status === "Pendente";
         const statusClass = request.status === "Aceita" ? "accepted" : request.status === "Recusada" ? "rejected" : "";
         return `
           <article class="request-history-card">
             <div class="avatar small ${user.avatar}">${escapeHtml(user.initials)}</div>
             <div>
-              <h3>${escapeHtml(request.user)} · ${escapeHtml(project.name)}</h3>
+              <h3>${escapeHtml(requestUserName(request))} · ${escapeHtml(project.name)}</h3>
               <p>Solicitação de entrada no projeto.</p>
               <small>Solicitado em ${escapeHtml(request.requestedAt)}${request.decidedAt ? ` · Decidido em ${escapeHtml(request.decidedAt)} por ${escapeHtml(request.decidedBy)}` : ""}</small>
               <div class="request-status-line">
@@ -10758,8 +10768,20 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
     });
 
     document.getElementById("requestButton").addEventListener("click", () => {
-      renderRequestHistory();
       openDialog(requestModal);
+      try {
+        renderRequestHistory();
+      } catch (error) {
+        console.error("Falha ao abrir solicitações:", error);
+        const list = document.getElementById("requestHistoryList");
+        const empty = document.getElementById("requestHistoryEmpty");
+        if (list) list.innerHTML = "";
+        if (empty) {
+          empty.hidden = false;
+          empty.querySelector("strong").textContent = "Não foi possível carregar as solicitações";
+          empty.querySelector("span").textContent = "Atualize a página e tente novamente.";
+        }
+      }
     });
 
     document.getElementById("closeNotificationModal").addEventListener("click", () => {
