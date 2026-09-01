@@ -9135,15 +9135,16 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
       const exact = users.find(user => normalizeCalendarFilter(user?.name) === normalizedRaw);
       if (exact?.name) return exact.name;
 
-      if (raw.includes("?")) {
-        const safe = normalizedRaw.replace(/[.*+^$()|[\]\\]/g, "\\    function requestUserName(request) {
-      return String(request?.user || request?.userName || "Usuário").trim() || "Usuário";
-    }").replace(/\?/g, ".");
-        try {
-          const pattern = new RegExp("^" + safe + "$", "i");
-          const matched = users.find(user => pattern.test(normalizeCalendarFilter(user?.name)));
-          if (matched?.name) return matched.name;
-        } catch (_) {}
+      if (normalizedRaw.includes("?")) {
+        const matched = users.find(user => {
+          const candidate = normalizeCalendarFilter(user?.name);
+          if (candidate.length !== normalizedRaw.length) return false;
+          for (let i = 0; i < normalizedRaw.length; i++) {
+            if (normalizedRaw[i] !== "?" && normalizedRaw[i] !== candidate[i]) return false;
+          }
+          return true;
+        });
+        if (matched?.name) return matched.name;
       }
 
       return raw;
