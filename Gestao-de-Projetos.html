@@ -9566,12 +9566,20 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
 
     function renderOwnerPie() {
       const ownerData = getOwnerCounts().slice(0, 8);
-      const avatarColorMap = {
-        a1: "#0d8b9f", a2: "#a96447", a3: "#6d4ba5", a4: "#24936d",
-        a5: "#b6812a", a6: "#98577f", a7: "#2f75b8", a8: "#c85649",
-        a9: "#5f9135", a10: "#bd7f21", a11: "#596bb8", a12: "#b83f78"
-      };
-      const ownerPalette = ownerData.map(([owner]) => avatarColorMap[avatarForName(owner).avatar] || "#2f95ae");
+
+      // Cada responsável recebe uma cor própria no gráfico.
+      // A ordem da paleta foi escolhida para manter contraste entre fatias vizinhas.
+      const ownerColors = [
+        "#0d8b9f",
+        "#c06a3d",
+        "#6f5ab7",
+        "#2f9a68",
+        "#c28a24",
+        "#b34f7b",
+        "#3d79bd",
+        "#cf5548"
+      ];
+      const ownerPalette = ownerData.map(([,], index) => ownerColors[index % ownerColors.length]);
 
       renderPieChartBlock({
         data: ownerData,
