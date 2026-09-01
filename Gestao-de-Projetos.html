@@ -8960,6 +8960,21 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
     const USER_KEY = "cscCurrentUserV1";
     const USERS_KEY = "cscUsersV1";
     const THEME_KEY = "cscThemeV1"; // mantido apenas por compatibilidade
+    const APP_CACHE_VERSION_KEY = "cscAppCacheVersionV1";
+    const APP_CACHE_VERSION = "cache-2026-09-01-02";
+
+    // Nova publicação => invalida somente os caches locais de dados.
+    // A sessão autenticada permanece ativa e os dados são recarregados do backend.
+    try {
+      const cachedVersion = localStorage.getItem(APP_CACHE_VERSION_KEY);
+      if (cachedVersion !== APP_CACHE_VERSION) {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(USERS_KEY);
+        localStorage.removeItem(USER_KEY);
+        localStorage.setItem(APP_CACHE_VERSION_KEY, APP_CACHE_VERSION);
+        console.info("[CSC] Cache local invalidado para a nova versão.");
+      }
+    } catch (_) {}
     const defaultUsers = [
       { name: "Matheus Viana", email: "matheus.viana@univale.com", role: "Analista de Telemetria", permission: "participante", initials: "MV", avatar: "a1", isAdmin: true, active: true },
       { name: "Mariana Costa", email: "mariana.costa@univale.local", role: "Analista de Projetos", permission: "participante", initials: "MC", avatar: "a3", active: true },
@@ -9658,8 +9673,9 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
         .filter(project => project && project.end && project.status !== "Concluído" && project.status !== "Cancelado")
         .map(project => ({ project, meta: milestoneDeadlineMeta(project) }))
         .sort((a, b) => {
-          const priority = item => (item.meta.overdue || item.project.status === "Em atraso") ? 0 : (item.project.status === "Pausado" ? 1 : 2);
-          return priority(a) - priority(b) || (parseBrDate(a.project.end) - parseBrDate(b.project.end));
+          const aDate = parseBrDate(a.project.end);
+          const bDate = parseBrDate(b.project.end);
+          return aDate - bDate;
         });
       const visible = actionable.slice(0, MILESTONES_PER_PAGE);
       updateCalendarIndicators(visible);
