@@ -9076,6 +9076,10 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
     }
     window.addEventListener("pagehide", () => { if (persistTimer) flushProjectsCache(); });
 
+    function samePerson(a, b) {
+      return normalizeCalendarFilter(a) === normalizeCalendarFilter(b);
+    }
+
     function getProjectParticipants(project) {
       return [...new Set([project.owner, ...(project.members || [])].filter(Boolean))];
     }
@@ -9088,14 +9092,25 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
       return currentUserCanParticipate();
     }
 
-    function userCanEdit(project, userName = currentUser.name) {
-      const targetUser = users.find(user => user.name === userName);
-      const canParticipate = Boolean(targetUser?.isAdmin || targetUser?.permission === "participante");
-      return canParticipate && getProjectParticipants(project).includes(userName);
+    function isProjectOwner(project, userName = currentUser.name) {
+      return samePerson(project?.owner, userName);
     }
 
-    function isProjectOwner(project, userName = currentUser.name) {
-      return project.owner === userName;
+    function isProjectCreator(project, userName = currentUser.name) {
+      return samePerson(project?.creator || project?.owner, userName);
+    }
+
+    function isProjectAuthority(project, userName = currentUser.name) {
+      return isProjectCreator(project, userName) || isProjectOwner(project, userName);
+    }
+
+    function userCanEdit(project, userName = currentUser.name) {
+      const targetUser = users.find(user => samePerson(user.name, userName)) ||
+        (samePerson(currentUser?.name, userName) ? currentUser : null);
+      const canParticipate = Boolean(targetUser?.isAdmin || targetUser?.permission === "participante");
+      if (!canParticipate) return false;
+      if (isProjectAuthority(project, userName)) return true;
+      return (project.members || []).some(name => samePerson(name, userName));
     }
 
     function isCurrentUserAdmin() {
@@ -9103,19 +9118,19 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
     }
 
     function userCanManageStructure(project) {
-      return isProjectOwner(project) || isCurrentUserAdmin();
+      return isProjectAuthority(project);
     }
 
     function getPendingRequest(project, userName = currentUser.name) {
       return (project.joinRequests || []).find(request =>
-        request.user === userName && request.status === "Pendente"
+        samePerson(request.user || request.userName, userName) && request.status === "Pendente"
       );
     }
 
     function getPendingRequestsForCurrentUser() {
       return projects.flatMap(project =>
         (project.joinRequests || [])
-          .filter(request => request.status === "Pendente" && project.owner === currentUser.name)
+          .filter(request => request.status === "Pendente" && isProjectAuthority(project))
           .map(request => ({ project, request }))
       );
     }
@@ -9123,7 +9138,7 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
     function getAllRequestsForCurrentUser() {
       return projects.flatMap(project =>
         (project.joinRequests || [])
-          .filter(() => project.owner === currentUser.name)
+          .filter(() => isProjectAuthority(project))
           .map(request => ({ project, request }))
       ).sort((a, b) => {
         const aTime = Date.parse(a.request.decidedAt || a.request.requestedAt) || 0;
@@ -9670,6 +9685,10 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
     }
 
     function requestProjectDeletion(project) {
+      if (!userCanManageStructure(project)) {
+        showToast("Somente o criador ou responsável principal pode excluir este projeto.");
+        return;
+      }
       pendingDeleteProject = project;
       systemConfirmProject.textContent = `“${project.name}”`;
       setDeleteModalBusy(false, "");
@@ -9759,7 +9778,7 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
               <span class="status ${statusClassMap[project.status] || "andamento"}">${escapeHtml(project.status)}</span>
             </div>
           </div>
-          <div class="registration-item-actions">
+          <div class="registration-item-actions" ${userCanManageStructure(project) ? "" : "hidden"}>
             <div class="registration-actions">
               <button class="registration-edit-btn" type="button" data-edit-id="${project.id}" title="Editar cadastro do projeto" aria-label="Editar cadastro do projeto ${escapeHtml(project.name)}">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -9789,6 +9808,7 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
           event.stopPropagation();
           const project = projects.find(item => String(item.id) === String(button.dataset.disableId));
           if (!project || project.status === "Cancelado") return;
+          if (!userCanManageStructure(project)) return showToast("Somente o criador ou responsável principal pode desabilitar este projeto.");
           if (!window.confirm(`Desabilitar o projeto “${project.name}”? Ele permanecerá cadastrado com status Cancelado.`)) return;
           try {
             const session = requireActiveSession();
@@ -9823,7 +9843,7 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
         item.addEventListener("click", event => {
           if (event.target.closest("button, a")) return;
           const editButton = item.querySelector("[data-edit-id]");
-          if (editButton) openProjectEdit(editButton.dataset.editId);
+          if (editButton && !editButton.closest(".registration-item-actions")?.hidden) openProjectEdit(editButton.dataset.editId);
         });
       });
     }
@@ -9875,7 +9895,7 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
       const section = document.getElementById("pendingRequestsSection");
       const pending = (project.joinRequests || []).filter(request => request.status === "Pendente");
 
-      if (!isProjectOwner(project) || pending.length === 0) {
+      if (!isProjectAuthority(project) || pending.length === 0) {
         section.hidden = true;
         section.innerHTML = "";
         return;
@@ -9922,8 +9942,8 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
       if (!canManage) return;
 
       document.getElementById("structuralPermissionLabel").innerHTML =
-        isCurrentUserAdmin() && !isProjectOwner(project)
-          ? '<span class="admin-badge">Acesso administrativo</span>'
+        isProjectCreator(project) && !isProjectOwner(project)
+          ? "Criador do projeto"
           : "Responsável principal";
 
       document.getElementById("structuralArea").value = project.area || "CSC";
@@ -10184,9 +10204,9 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
       if (canEdit) {
         accessPanel.hidden = true;
         accessPanel.innerHTML = "";
-        permissionNote.textContent = isProjectOwner(project)
-          ? "Você é o responsável principal. Pode atualizar o projeto e aprovar novas solicitações."
-          : "Sua participação foi aprovada. Você pode atualizar status, progresso e registrar notas.";
+        permissionNote.textContent = isProjectAuthority(project)
+          ? "Você é o criador/responsável deste projeto. Possui autonomia completa de edição e aprovação de solicitações."
+          : "Sua participação foi aprovada. Você pode atualizar status, progresso e registrar notas, respeitando as justificativas exigidas.";
         return;
       }
 
@@ -10362,7 +10382,7 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
               (item.requestedAt === update.dateTime || item.status === "Pendente")
             );
 
-            if (request && request.status === "Pendente" && isProjectOwner(project)) {
+            if (request && request.status === "Pendente" && isProjectAuthority(project)) {
               requestActions = `
                 <div class="history-request-actions">
                   <button class="request-action accept" type="button"
@@ -11423,6 +11443,10 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
     function openProjectEdit(projectId) {
       const project = projects.find(item => String(item.id) === String(projectId));
       if (!project) return;
+      if (!userCanManageStructure(project)) {
+        showToast("Somente o criador ou responsável principal pode alterar o cadastro deste projeto.");
+        return;
+      }
 
       editingProjectId = project.id;
       document.getElementById("projectName").value = project.name || "";
@@ -11940,6 +11964,7 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
         .map(item => ({
           id: item.id,
           userId: item.usuarioId,
+          user: item.usuarioNome,
           userName: item.usuarioNome,
           status: item.status,
           requestedAt: item.solicitadoEm,
