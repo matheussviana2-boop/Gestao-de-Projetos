@@ -8367,7 +8367,7 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
         </article>
 
         <div class="right-column">
-          <article class="panel">
+          <article id="divisionProjectsPanel" class="panel">
             <div class="panel-header">
               <div class="panel-title">
                 <svg><use href="#i-chart"/></svg>
@@ -8961,7 +8961,7 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
     const USERS_KEY = "cscUsersV1";
     const THEME_KEY = "cscThemeV1"; // mantido apenas por compatibilidade
     const APP_CACHE_VERSION_KEY = "cscAppCacheVersionV1";
-    const APP_CACHE_VERSION = "cache-2026-09-01-03";
+    const APP_CACHE_VERSION = "cache-2026-09-01-04";
 
     // Nova publicação => invalida somente os caches locais de dados.
     // A sessão autenticada permanece ativa e os dados são recarregados do backend.
@@ -12571,6 +12571,51 @@ body[data-theme="light"] #calendarPage .table-wrap {
 }
 body[data-theme="light"] #statusPieSection {
   border-top-color:rgba(55,145,183,.20) !important;
+}
+
+/* Hierarquia dos titulos dos graficos de divisao */
+#divisionProjectsPanel > .panel-header {
+  min-height:68px;
+  padding-inline:18px;
+}
+#divisionProjectsPanel > .panel-header .panel-title {
+  gap:11px;
+}
+#divisionProjectsPanel > .panel-header .panel-title svg {
+  width:22px;
+  height:22px;
+  filter:drop-shadow(0 2px 5px rgba(8,151,197,.18));
+}
+#divisionProjectsPanel > .panel-header .panel-title h2 {
+  font-size:1.08rem;
+  font-weight:800;
+  letter-spacing:.005em;
+  color:var(--text);
+}
+#divisionProjectsPanel .pie-section-header {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-height:22px;
+  font-size:.86rem;
+  font-weight:850;
+  line-height:1.25;
+  letter-spacing:.012em;
+  color:var(--text);
+  text-transform:none;
+}
+#divisionProjectsPanel .pie-section-header::before {
+  content:"";
+  width:4px;
+  height:16px;
+  flex:0 0 4px;
+  border-radius:999px;
+  background:linear-gradient(180deg, var(--cyan), #087da8);
+  box-shadow:0 0 8px rgba(7,157,203,.22);
+}
+body[data-theme="light"] #divisionProjectsPanel > .panel-header .panel-title h2,
+body[data-theme="light"] #divisionProjectsPanel .pie-section-header {
+  color:#17384a !important;
 }
 
 
