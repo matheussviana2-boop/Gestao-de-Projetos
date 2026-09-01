@@ -9151,15 +9151,21 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
     }
 
     function getPendingRequest(project, userName = currentUser.name) {
+      if (isProjectAuthority(project, userName)) return null;
       return (project.joinRequests || []).find(request =>
-        samePerson(request.user || request.userName, userName) && request.status === "Pendente"
+        samePerson(requestUserName(request), userName) && request.status === "Pendente"
       );
     }
 
     function getPendingRequestsForCurrentUser() {
       return projects.flatMap(project =>
         (project.joinRequests || [])
-          .filter(request => request.status === "Pendente" && isProjectAuthority(project))
+          .filter(request =>
+            request.status === "Pendente" &&
+            isProjectAuthority(project) &&
+            !samePerson(requestUserName(request), project.creator || project.owner) &&
+            !samePerson(requestUserName(request), project.owner)
+          )
           .map(request => ({ project, request }))
       );
     }
@@ -9167,7 +9173,11 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
     function getAllRequestsForCurrentUser() {
       return projects.flatMap(project =>
         (project.joinRequests || [])
-          .filter(() => isProjectAuthority(project))
+          .filter(request =>
+            isProjectAuthority(project) &&
+            !samePerson(requestUserName(request), project.creator || project.owner) &&
+            !samePerson(requestUserName(request), project.owner)
+          )
           .map(request => ({ project, request }))
       ).sort((a, b) => {
         const aTime = Date.parse(a.request.decidedAt || a.request.requestedAt) || 0;
@@ -10305,7 +10315,12 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
 
     async function requestProjectAccess(projectId) {
       const project = projects.find(item => String(item.id) === String(projectId));
-      if (!project || userCanEdit(project) || getPendingRequest(project)) return;
+      if (!project) return;
+      if (isProjectAuthority(project)) {
+        showToast("Você é o criador/responsável deste projeto e já possui acesso completo.");
+        return;
+      }
+      if (userCanEdit(project) || getPendingRequest(project)) return;
 
       try {
         const session = requireActiveSession();
