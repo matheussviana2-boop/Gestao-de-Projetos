@@ -9122,7 +9122,31 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
     }
 
     function requestUserName(request) {
+      const userId = String(request?.userId || "").trim();
+      if (userId) {
+        const byId = users.find(user => String(user?.id || "").trim() === userId);
+        if (byId?.name) return byId.name;
+      }
+
+      const raw = String(request?.user || request?.userName || "").trim();
+      if (!raw) return "Usuário";
+
+      const normalizedRaw = normalizeCalendarFilter(raw);
+      const exact = users.find(user => normalizeCalendarFilter(user?.name) === normalizedRaw);
+      if (exact?.name) return exact.name;
+
+      if (raw.includes("?")) {
+        const safe = normalizedRaw.replace(/[.*+^$()|[\]\\]/g, "\\    function requestUserName(request) {
       return String(request?.user || request?.userName || "Usuário").trim() || "Usuário";
+    }").replace(/\?/g, ".");
+        try {
+          const pattern = new RegExp("^" + safe + "$", "i");
+          const matched = users.find(user => pattern.test(normalizeCalendarFilter(user?.name)));
+          if (matched?.name) return matched.name;
+        } catch (_) {}
+      }
+
+      return raw;
     }
 
     function getPendingRequest(project, userName = currentUser.name) {
@@ -12424,6 +12448,56 @@ body[data-theme="light"] #statusPieSection {
     white-space:nowrap !important;
   }
 }
+
+
+    /* Solicitações pendentes — destaque leve no padrão visual do sistema */
+    body[data-theme="light"] .request-section {
+      border: 1px solid rgba(46, 139, 173, .30) !important;
+      border-radius: 16px !important;
+      background: linear-gradient(180deg, rgba(239, 248, 252, .98), rgba(232, 243, 248, .98)) !important;
+      box-shadow: none !important;
+      overflow: hidden;
+    }
+
+    body[data-theme="light"] .request-section-header {
+      background: rgba(218, 238, 247, .72) !important;
+      border-bottom: 1px solid rgba(46, 139, 173, .22) !important;
+      color: #1c4052 !important;
+    }
+
+    body[data-theme="light"] .request-section-header span {
+      background: #df7a0a !important;
+      color: #fff !important;
+      box-shadow: none !important;
+    }
+
+    body[data-theme="light"] .request-item {
+      background: rgba(249, 253, 255, .78) !important;
+      border-bottom: 1px solid rgba(46, 139, 173, .16) !important;
+      box-shadow: none !important;
+    }
+
+    body[data-theme="light"] .request-item-info strong {
+      color: #17394a !important;
+    }
+
+    body[data-theme="light"] .request-item-info small {
+      color: #607c8b !important;
+    }
+
+    body[data-theme="light"] .request-action.accept {
+      color: #16764f !important;
+      border-color: rgba(35, 153, 103, .38) !important;
+      background: rgba(48, 183, 124, .10) !important;
+      box-shadow: none !important;
+    }
+
+    body[data-theme="light"] .request-action.reject {
+      color: #bf4050 !important;
+      border-color: rgba(205, 74, 91, .34) !important;
+      background: rgba(217, 75, 93, .08) !important;
+      box-shadow: none !important;
+    }
 
 </style>
 <script data-csc-date-validation-v86>
