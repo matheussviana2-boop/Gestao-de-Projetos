@@ -8054,6 +8054,23 @@ body[data-theme="light"] .project-summary-item {
 .project-summary-item.paused .project-summary-dot { background:#e48a17; }
 .project-summary-item.delayed .project-summary-dot { background:#dc4c5d; }
 .project-summary-item strong { font-size:.82rem; font-weight:900; color:inherit; }
+#overviewPage .project-summary-item {
+  cursor:pointer;
+  transition:border-color .16s ease, background .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+#overviewPage .project-summary-item:hover {
+  border-color:var(--line-strong) !important;
+  transform:translateY(-1px);
+}
+#overviewPage .project-summary-item.active {
+  border-color:var(--line-strong) !important;
+  background:rgba(25,217,241,.10) !important;
+  box-shadow:0 0 0 2px rgba(25,217,241,.08);
+}
+body[data-theme="light"] #overviewPage .project-summary-item.active {
+  background:rgba(42,168,200,.11) !important;
+  border-color:rgba(42,143,175,.48) !important;
+}
 #overviewCompactSummary { margin-bottom:0; }
 #calendarCompactSummary { margin:0 0 10px; padding:8px 10px; border-radius:12px; box-shadow:none; background:transparent; }
 body[data-theme="light"] #calendarCompactSummary { background:rgba(255,255,255,.34); }
@@ -9246,6 +9263,21 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
       areaFilter.value = areas.includes(current) ? current : "";
     }
 
+    let overviewSummaryFilter = "";
+
+    function overviewSummaryMatches(project) {
+      if (!overviewSummaryFilter) return true;
+      if (overviewSummaryFilter === "nodate") return projectSummaryNoDate(project);
+      const statusByType = {
+        completed: "Concluído",
+        progress: "Em andamento",
+        paused: "Pausado",
+        delayed: "Em atraso"
+      };
+      const expected = statusByType[overviewSummaryFilter];
+      return !expected || projectSummaryStatus(project?.status) === projectSummaryStatus(expected);
+    }
+
     function getFilteredProjects() {
       const term = searchInput.value.trim().toLowerCase();
       const area = areaFilter.value;
@@ -9255,7 +9287,8 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
         const text = `${project.name} ${project.description} ${project.area} ${getProjectParticipants(project).join(" ")}`.toLowerCase();
         return (!term || text.includes(term)) &&
           (!area || project.area === area) &&
-          (!status || project.status === status);
+          (!status || project.status === status) &&
+          overviewSummaryMatches(project);
       });
     }
 
@@ -11061,10 +11094,54 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
       const end = String(project?.dataFim || project?.end || "").trim();
       return explicit || (!start && !end);
     }
+    function activeOverviewSummaryType() {
+      if (overviewSummaryFilter) return overviewSummaryFilter;
+      const byStatus = {
+        "Concluído": "completed",
+        "Em andamento": "progress",
+        "Pausado": "paused",
+        "Em atraso": "delayed"
+      };
+      return byStatus[statusFilter?.value] || "";
+    }
+
+    function applyOverviewSummaryFilter(type) {
+      const active = activeOverviewSummaryType();
+      const sameFilter = active === type;
+
+      if (type === "total") {
+        overviewSummaryFilter = "";
+        statusFilter.value = "";
+      } else if (sameFilter) {
+        overviewSummaryFilter = "";
+        statusFilter.value = "";
+      } else if (type === "nodate") {
+        overviewSummaryFilter = "nodate";
+        statusFilter.value = "";
+      } else {
+        const statusByType = {
+          completed: "Concluído",
+          progress: "Em andamento",
+          paused: "Pausado",
+          delayed: "Em atraso"
+        };
+        overviewSummaryFilter = "";
+        statusFilter.value = statusByType[type] || "";
+      }
+
+      projectCurrentPage = 1;
+      renderProjects();
+    }
+
     function renderProjectSummaryStrip(targetId, list) {
       const target = document.getElementById(targetId);
       if (!target) return;
       const data = Array.isArray(list) ? list : [];
+      if (!data.length) {
+        target.innerHTML = "";
+        return;
+      }
+
       const count = status => data.filter(project => projectSummaryStatus(project?.status) === projectSummaryStatus(status)).length;
       const values = [
         ["total", data.length, "cadastrados"],
@@ -11073,8 +11150,22 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
         ["progress", count("Em andamento"), "em andamento"],
         ["paused", count("Pausado"), "pausados"],
         ["delayed", count("Em atraso"), "em atraso"]
-      ];
-      target.innerHTML = values.map(([type,value,label]) => `<span class="project-summary-item ${type}"><span class="project-summary-dot"></span><strong>${value}</strong> ${label}</span>`).join("");
+      ].filter(([type, value]) => type === "total" || value > 0);
+
+      const activeType = activeOverviewSummaryType();
+      target.innerHTML = values.map(([type,value,label]) => {
+        const active = targetId === "overviewCompactSummary" && ((type === "total" && !activeType && !statusFilter.value) || type === activeType);
+        if (targetId !== "overviewCompactSummary") {
+          return `<span class="project-summary-item ${type}"><span class="project-summary-dot"></span><strong>${value}</strong> ${label}</span>`;
+        }
+        return `<button type="button" class="project-summary-item ${type}${active ? " active" : ""}" data-summary-filter="${type}" aria-pressed="${active ? "true" : "false"}" title="Filtrar por ${label}"><span class="project-summary-dot"></span><strong>${value}</strong> ${label}</button>`;
+      }).join("");
+
+      if (targetId === "overviewCompactSummary") {
+        target.querySelectorAll("[data-summary-filter]").forEach(button => {
+          button.addEventListener("click", () => applyOverviewSummaryFilter(button.dataset.summaryFilter));
+        });
+      }
     }
 
   function updateCalendarIndicators(items) {
@@ -11385,12 +11476,24 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
       areaFilter.value = "";
       statusFilter.value = "";
       searchInput.value = "";
+      overviewSummaryFilter = "";
+      projectCurrentPage = 1;
       renderProjects();
     });
 
-    searchInput.addEventListener("input", renderProjects);
-    areaFilter.addEventListener("change", renderProjects);
-    statusFilter.addEventListener("change", renderProjects);
+    searchInput.addEventListener("input", () => {
+      projectCurrentPage = 1;
+      renderProjects();
+    });
+    areaFilter.addEventListener("change", () => {
+      projectCurrentPage = 1;
+      renderProjects();
+    });
+    statusFilter.addEventListener("change", () => {
+      overviewSummaryFilter = "";
+      projectCurrentPage = 1;
+      renderProjects();
+    });
 
     document.querySelectorAll(".nav-button").forEach(button => {
       button.addEventListener("click", () => {
