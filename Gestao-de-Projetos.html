@@ -9134,25 +9134,7 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
       }
 
       const raw = String(request?.user || request?.userName || "").trim();
-      if (!raw) return "Usuário";
-
-      const normalizedRaw = normalizeCalendarFilter(raw);
-      const exact = users.find(user => normalizeCalendarFilter(user?.name) === normalizedRaw);
-      if (exact?.name) return exact.name;
-
-      if (normalizedRaw.includes("?")) {
-        const matched = users.find(user => {
-          const candidate = normalizeCalendarFilter(user?.name);
-          if (candidate.length !== normalizedRaw.length) return false;
-          for (let i = 0; i < normalizedRaw.length; i++) {
-            if (normalizedRaw[i] !== "?" && normalizedRaw[i] !== candidate[i]) return false;
-          }
-          return true;
-        });
-        if (matched?.name) return matched.name;
-      }
-
-      return raw;
+      return canonicalUserName(raw) || "Usuário";
     }
 
     function getPendingRequest(project, userName = currentUser.name) {
@@ -9254,13 +9236,37 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
       });
     }
 
+    function canonicalUserName(value) {
+      const raw = String(value || "").trim();
+      if (!raw) return "";
+
+      const normalizedRaw = normalizeCalendarFilter(raw);
+      const exact = users.find(user => normalizeCalendarFilter(user?.name) === normalizedRaw);
+      if (exact?.name) return exact.name;
+
+      if (normalizedRaw.includes("?")) {
+        const matched = users.find(user => {
+          const candidate = normalizeCalendarFilter(user?.name);
+          if (candidate.length !== normalizedRaw.length) return false;
+          for (let i = 0; i < normalizedRaw.length; i++) {
+            if (normalizedRaw[i] !== "?" && normalizedRaw[i] !== candidate[i]) return false;
+          }
+          return true;
+        });
+        if (matched?.name) return matched.name;
+      }
+
+      return raw;
+    }
+
     function avatarForName(name) {
-      const user = users.find(item => item.name === name);
+      const canonicalName = canonicalUserName(name) || String(name || "");
+      const user = users.find(item => samePerson(item.name, canonicalName));
       if (user) return user;
       return {
-        name,
-        initials: initialsFromName(name),
-        avatar: `a${(Math.abs(String(name).length) % 6) + 1}`,
+        name: canonicalName,
+        initials: initialsFromName(canonicalName),
+        avatar: `a${(Math.abs(String(canonicalName).length) % 6) + 1}`,
         role: "Participante"
       };
     }
@@ -9469,10 +9475,15 @@ body[data-theme="light"] #overviewPage .project-summary-inline .project-summary-
       const counts = new Map();
 
       projects.forEach(project => {
-        const uniqueParticipants = [...new Set(getProjectParticipants(project))];
+        const participantMap = new Map();
 
-        uniqueParticipants.forEach(participant => {
-          const owner = String(participant || "Não informado").trim() || "Não informado";
+        getProjectParticipants(project).forEach(participant => {
+          const canonical = canonicalUserName(participant) || "Não informado";
+          const key = normalizeCalendarFilter(canonical);
+          if (!participantMap.has(key)) participantMap.set(key, canonical);
+        });
+
+        participantMap.forEach(owner => {
           counts.set(owner, (counts.get(owner) || 0) + 1);
         });
       });
