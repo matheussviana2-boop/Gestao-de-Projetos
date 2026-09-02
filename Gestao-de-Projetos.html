@@ -8868,6 +8868,7 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
           <article class="panel executive-chart-card"><div class="executive-card-title"><div><strong>Projetos por Status</strong><small>Distribuição do portfólio</small></div></div><div id="calendarStatusChart" class="calendar-status-chart"></div></article>
           <article class="panel executive-chart-card"><div class="executive-card-title"><div><strong>Projetos por Área</strong><small>Quantidade por área responsável</small></div></div><div id="calendarAreaChart" class="calendar-area-chart"></div></article>
           <article class="panel executive-chart-card"><div class="executive-card-title"><div><strong>Entregas por Mês</strong><small>Distribuição anual das conclusões previstas</small></div></div><div id="calendarDeliveryChart" class="calendar-delivery-chart"></div></article>
+          <article class="panel executive-chart-card"><div class="executive-card-title"><div><strong>Projetos por Responsável</strong><small>Distribuição por responsável principal</small></div></div><div id="calendarOwnerChart" class="calendar-status-chart calendar-owner-chart"></div></article>
         </div>
       </section>
 
@@ -9172,7 +9173,7 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
     const USERS_KEY = "cscUsersV1";
     const THEME_KEY = "cscThemeV1"; // mantido apenas por compatibilidade
     const APP_CACHE_VERSION_KEY = "cscAppCacheVersionV1";
-    const APP_CACHE_VERSION = "cache-2026-09-02-06";
+    const APP_CACHE_VERSION = "cache-2026-09-02-07";
 
     // Nova publicação => invalida somente os caches locais de dados.
     // A sessão autenticada permanece ativa e os dados são recarregados do backend.
@@ -11463,6 +11464,7 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
       if (status === "Concluído") return "completed";
       if (status === "Em atraso") return "delayed";
       if (status === "Cancelado") return "cancelled";
+      if (status === "Não iniciado") return "notstarted";
       return "";
     }
 
@@ -11633,6 +11635,34 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
         <div class="calendar-exec-legend">${data.map(([status, value]) => `<div class="calendar-exec-legend-item"><i style="background:${calendarStatusColor(status)}"></i><span>${escapeHtml(status)}</span><strong>${value} (${calendarPercent(value, list.length)}%)</strong></div>`).join("") || `<span class="calendar-chart-empty">Sem dados no período</span>`}</div>`;
     }
 
+    function renderCalendarOwnerChart(list) {
+      const target = document.getElementById("calendarOwnerChart");
+      if (!target) return;
+      const counts = new Map();
+      list.forEach(project => {
+        const owner = canonicalUserName(project?.owner) || String(project?.owner || "Não informado").trim() || "Não informado";
+        const key = normalizeCalendarFilter(owner);
+        const current = counts.get(key) || { name: owner, count: 0 };
+        current.name = canonicalUserName(current.name) || owner;
+        current.count += 1;
+        counts.set(key, current);
+      });
+      const data = [...counts.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "pt-BR")).slice(0, 8);
+      const palette = ["#0d8b9f", "#c06a3d", "#6f5ab7", "#2f9a68", "#c28a24", "#b34f7b", "#3d79bd", "#cf5548"];
+      let cursor = 0;
+      const gradient = data.map((item, index) => {
+        const start = cursor;
+        cursor += calendarPercent(item.count, list.length);
+        return `${palette[index % palette.length]} ${start}% ${Math.min(100, cursor)}%`;
+      }).join(", ") || "#dce8ed 0 100%";
+      target.innerHTML = `
+        <div class="calendar-exec-donut-wrap">
+          <div class="calendar-exec-donut" style="background:conic-gradient(${gradient})"></div>
+          <div class="calendar-exec-donut-center"><strong>${list.length}</strong><small>Projetos</small></div>
+        </div>
+        <div class="calendar-exec-legend">${data.map((item, index) => `<div class="calendar-exec-legend-item"><i style="background:${palette[index % palette.length]}"></i><span title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span><strong>${item.count} (${calendarPercent(item.count, list.length)}%)</strong></div>`).join("") || `<span class="calendar-chart-empty">Sem responsáveis no período</span>`}</div>`;
+    }
+
     function renderCalendarAreaChart(list) {
       const target = document.getElementById("calendarAreaChart");
       if (!target) return;
@@ -11726,6 +11756,7 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
       renderCalendarStatusChart(list);
       renderCalendarAreaChart(list);
       renderCalendarDeliveryChart(list, year);
+      renderCalendarOwnerChart(list);
     }
 
     function renderCalendar() {
@@ -11792,7 +11823,7 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
           </div>
           <div class="gantt-cell gantt-owner-cell" title="${escapeHtml(item.project.owner)}">${escapeHtml(item.project.owner)}</div>
           ${hasDates
-            ? `<div class="gantt-bar-layer"><div class="gantt-bar ${statusBarClass(item.project.status)}" style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%" data-project-name="${escapeHtml(item.project.name)}" data-project-description="${escapeHtml(item.project.description || "Sem descrição cadastrada.")}" data-start-date="${escapeHtml(item.project.start)}" data-end-date="${escapeHtml(item.project.end)}" title="Clique para visualizar os detalhes"></div></div>`
+            ? `<div class="gantt-bar-layer"><div class="gantt-bar ${statusBarClass(item.project.status)}" style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%" data-project-name="${escapeHtml(item.project.name)}" data-project-description="${escapeHtml(item.project.description || "Sem descrição cadastrada.")}" data-start-date="${escapeHtml(item.project.start)}" data-end-date="${escapeHtml(item.project.end)}" title="${Math.max(0, Math.min(100, Number(item.project.progress) || 0))}% concluído · Clique para visualizar os detalhes"><span class="gantt-bar-label">${Math.max(0, Math.min(100, Number(item.project.progress) || 0))}%</span></div></div>`
             : `<div class="gantt-bar-layer no-date"><span class="gantt-no-date-label">SEM DATA DEFINIDA</span></div>`}`;
       });
       grid.innerHTML = html;
@@ -11853,6 +11884,7 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
 
     function showPage(section) {
       if (section === "Configurações" && !isCurrentUserAdmin()) { showToast("Acesso restrito ao administrador."); section = "Visão Geral"; }
+      document.body.classList.toggle("calendar-view-active", section === "Calendário");
       const pages = {
         "Visão Geral": document.getElementById("overviewPage"),
         "Cadastros": document.getElementById("cadastrosPage"),
@@ -13158,6 +13190,98 @@ body[data-theme="light"] #divisionProjectsPanel .pie-section-header {
       }
     }
 
+</style>
+<style id="calendar-readability-v97">
+  /* Tipografia e contraste da visao executiva */
+  body.calendar-view-active .main,
+  #calendarPage {
+    font-family:"Segoe UI Variable Text","Segoe UI",Arial,sans-serif;
+  }
+  body.calendar-view-active .title-block h1 { color:#102f41; font-weight:760; letter-spacing:-.04em; }
+  body.calendar-view-active .title-block p { color:#496b7e; font-size:1rem; font-weight:500; }
+  #calendarPage .calendar-filter-field label { color:#24495d !important; font-size:.71rem !important; font-weight:800 !important; }
+  #calendarPage .calendar-filter-input,
+  #calendarPage .calendar-filter-select,
+  #calendarPage .calendar-filter-clear { color:#294c60 !important; font-size:.78rem !important; font-weight:600 !important; }
+  #calendarPage .executive-kpis .calendar-kpi-label { color:#294c60 !important; font-size:.73rem !important; font-weight:800 !important; }
+  #calendarPage .executive-kpis .calendar-kpi-value { color:#102f41 !important; font-size:1.58rem !important; font-weight:850 !important; }
+  #calendarPage .executive-kpis .calendar-kpi small { font-size:.65rem !important; font-weight:800 !important; }
+  #calendarPage .executive-gantt-card .gantt-header { font-size:.66rem !important; font-weight:850 !important; }
+  #calendarPage .executive-gantt-card .gantt-project strong { color:#17384a !important; font-size:.71rem !important; font-weight:800 !important; }
+  #calendarPage .executive-gantt-card .gantt-project small { color:#567486 !important; font-size:.60rem !important; font-weight:600 !important; }
+  #calendarPage .executive-gantt-card .gantt-owner-cell,
+  #calendarPage .executive-gantt-card .gantt-row-id { color:#486879 !important; font-size:.62rem !important; font-weight:700 !important; }
+  #calendarPage .executive-card-title strong { color:#17384a !important; font-size:.87rem !important; font-weight:850 !important; }
+  #calendarPage .executive-card-title small { color:#5c7888 !important; font-size:.62rem !important; font-weight:600 !important; }
+  #calendarPage .calendar-upcoming-main strong { color:#17384a; font-size:.67rem; font-weight:800; }
+  #calendarPage .calendar-upcoming-main small,
+  #calendarPage .calendar-upcoming-date { color:#577485; font-size:.58rem; font-weight:700; }
+  #calendarPage .calendar-exec-donut-center strong { color:#17384a; font-size:1.28rem; font-weight:850; }
+  #calendarPage .calendar-exec-donut-center small { color:#587686; font-size:.57rem; font-weight:700; }
+  #calendarPage .calendar-exec-legend-item { color:#486879; font-size:.61rem; font-weight:650; }
+  #calendarPage .calendar-exec-legend-item strong { color:#274b5e; font-size:.61rem; font-weight:850; }
+  #calendarPage .calendar-area-row { color:#496b7d; font-size:.62rem; font-weight:650; }
+  #calendarPage .calendar-area-row strong { color:#244b60; font-size:.64rem; font-weight:850; }
+  #calendarPage .calendar-line-label { fill:#234b60; font-size:8.8px; font-weight:850; }
+  #calendarPage .calendar-line-month { fill:#536f7e; font-size:8.2px; font-weight:750; }
+
+  /* Quatro graficos equilibrados na mesma linha */
+  #calendarPage .executive-chart-grid { grid-template-columns:repeat(4,minmax(0,1fr)) !important; gap:11px; }
+  #calendarPage .executive-chart-card { min-width:0; min-height:238px; }
+  #calendarPage .calendar-status-chart { grid-template-columns:105px minmax(0,1fr); gap:9px; padding:13px 12px 15px; }
+  #calendarPage .calendar-exec-donut-wrap { width:98px; height:98px; }
+  #calendarPage .calendar-area-chart { padding:16px 14px; }
+  #calendarPage .calendar-area-row { grid-template-columns:68px minmax(0,1fr) 18px; gap:7px; }
+  #calendarPage .calendar-delivery-chart { padding-inline:10px; }
+  #calendarPage .calendar-owner-chart .calendar-exec-legend-item span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  /* Status mais contrastantes e "Nao iniciado" separado do andamento */
+  #calendarPage .calendar-status-pill {
+    min-width:88px; min-height:24px; padding:4px 9px;
+    color:#08738f; background:#d9f2f8; border:1px solid #a9dfea;
+    font-size:.62rem; font-weight:850; letter-spacing:.005em;
+  }
+  #calendarPage .calendar-status-pill.notstarted {
+    color:#536178; background:#e9edf4; border-color:#cbd3df;
+  }
+  #calendarPage .calendar-status-pill.completed {
+    color:#187447; background:#def3e6; border-color:#b9e5ca;
+  }
+  #calendarPage .calendar-status-pill.paused {
+    color:#a95b05; background:#fff0da; border-color:#f4d5aa;
+  }
+  #calendarPage .calendar-status-pill.delayed {
+    color:#b33441; background:#fde5e7; border-color:#f2bcc1;
+  }
+  #calendarPage .calendar-status-pill.cancelled {
+    color:#5c6971; background:#e8ecef; border-color:#cbd3d8;
+  }
+  #calendarPage .gantt-bar.notstarted { background:linear-gradient(90deg,#71839a,#9aa8b9) !important; }
+  #calendarPage .gantt-bar-layer.no-date { background:linear-gradient(90deg,rgba(238,241,246,.72),rgba(247,249,251,.88)) !important; }
+  #calendarPage .gantt-no-date-label {
+    color:#58657a !important; background:#eef1f6 !important; border:1px dashed #aab5c4 !important;
+    font-size:.61rem !important; font-weight:850 !important; letter-spacing:.025em;
+  }
+
+  /* Percentual dentro da barra do cronograma */
+  #calendarPage .executive-gantt-card .gantt-bar { min-width:32px; display:flex; align-items:center; justify-content:center; overflow:visible; }
+  #calendarPage .gantt-bar-label {
+    position:relative; z-index:2; display:block; padding:0 4px;
+    color:#fff; font-size:.56rem; line-height:16px; font-weight:900; letter-spacing:.01em;
+    text-shadow:0 1px 2px rgba(13,48,64,.48); white-space:nowrap; pointer-events:none;
+  }
+
+  @media(max-width:1400px) {
+    #calendarPage .executive-chart-grid { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+    #calendarPage .executive-chart-card:last-child { grid-column:auto !important; }
+  }
+  @media(max-width:760px) {
+    #calendarPage .executive-chart-grid { grid-template-columns:1fr !important; }
+    #calendarPage .calendar-status-chart { grid-template-columns:110px minmax(0,1fr); }
+  }
+  body:not([data-theme="light"]).calendar-view-active .title-block h1,
+  body:not([data-theme="light"]) #calendarPage .executive-card-title strong,
+  body:not([data-theme="light"]) #calendarPage .calendar-exec-donut-center strong { color:#edf7fa !important; }
 </style>
 <script data-csc-date-validation-v86>
 (() => {
