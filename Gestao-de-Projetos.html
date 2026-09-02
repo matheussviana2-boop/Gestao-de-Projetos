@@ -8140,7 +8140,7 @@ body:not([data-theme="light"]) #overviewPage .project-icon.project-visual-icon::
 .executive-calendar-badge { display:inline-flex; align-items:center; gap:7px; min-height:34px; padding:0 11px; border:1px solid rgba(35,151,190,.22); border-radius:10px; color:#237794; background:rgba(241,249,252,.74); font-size:.68rem; font-weight:850; white-space:nowrap; }
 .executive-calendar-badge svg { width:17px; height:17px; }
 .executive-filter-panel { margin-bottom:12px; border-radius:13px; }
-#calendarPage .executive-filter-panel .calendar-filterbar { display:grid; grid-template-columns:minmax(230px,1.25fr) minmax(150px,.85fr) minmax(150px,.85fr) 110px 42px auto; gap:10px; align-items:end; padding:13px 14px 7px; border:0; border-radius:0; background:transparent; }
+#calendarPage .executive-filter-panel .calendar-filterbar { display:grid; grid-template-columns:minmax(220px,1.15fr) minmax(150px,.78fr) minmax(150px,.78fr) 108px minmax(172px,auto); gap:10px; align-items:end; padding:13px 14px 7px; border:0; border-radius:0; background:transparent; }
 #calendarPage .calendar-filter-field label { text-transform:none; letter-spacing:0; color:#385a6d; font-size:.64rem; font-weight:850; }
 #calendarPage .calendar-filter-input, #calendarPage .calendar-filter-select { min-height:38px; height:38px; border-radius:8px; font-size:.69rem; background:rgba(250,253,255,.96); }
 .calendar-search-wrap { position:relative; }
@@ -8149,6 +8149,8 @@ body:not([data-theme="light"]) #overviewPage .project-icon.project-visual-icon::
 #calendarPage .calendar-filter-clear, #calendarPage .calendar-current-year { min-height:38px; height:38px; border-radius:9px; display:inline-flex; align-items:center; justify-content:center; gap:7px; color:#1682a6; border-color:rgba(27,145,183,.34); background:rgba(247,252,254,.92); font-size:.67rem; font-weight:850; }
 #calendarPage .calendar-filter-clear svg, #calendarPage .calendar-current-year svg { width:15px; height:15px; }
 #calendarPage .calendar-current-year { width:42px; padding:0; }
+#calendarPage .calendar-filter-actions { display:grid; grid-template-columns:42px minmax(120px,1fr); gap:8px; align-items:end; min-width:0; }
+#calendarPage .calendar-filter-actions .calendar-filter-clear { width:100%; min-width:120px; padding:0 11px; white-space:nowrap; }
 #calendarPage .calendar-filter-summary { margin:0; padding:0 14px 9px; font-size:.61rem; }
 #calendarPage .calendar-kpis.executive-kpis { display:grid !important; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:0 0 12px; }
 #calendarPage .executive-kpis .calendar-kpi { min-height:88px; justify-content:flex-start; padding:14px 16px; gap:12px; border-radius:13px; background:rgba(249,252,254,.94); box-shadow:0 7px 20px rgba(24,70,94,.06); }
@@ -8241,8 +8243,8 @@ body:not([data-theme="light"]) .executive-filter-panel, body:not([data-theme="li
 body:not([data-theme="light"]) .executive-calendar-heading h2, body:not([data-theme="light"]) .executive-card-title strong, body:not([data-theme="light"]) #calendarPage .executive-kpis .calendar-kpi-value { color:#eef7fa; }
 body:not([data-theme="light"]) .executive-chart-card .executive-card-title { background:linear-gradient(90deg,rgba(14,54,72,.88),rgba(7,28,41,.3)); }
 @media(max-width:1450px){ .executive-calendar-main{grid-template-columns:minmax(0,1fr) 260px}.executive-calendar-side{grid-template-rows:minmax(0,1fr) auto}.calendar-upcoming-item{grid-template-columns:34px minmax(0,1fr) auto}.delivery-project-icon.project-visual-icon{width:34px;height:34px;flex-basis:34px} }
-@media(max-width:1180px){ #calendarPage .executive-filter-panel .calendar-filterbar{grid-template-columns:1.3fr 1fr 1fr 110px auto}.calendar-current-year{display:none!important}.executive-calendar-main{grid-template-columns:1fr}.executive-calendar-side{grid-template-columns:1fr 1fr;grid-template-rows:auto}.executive-chart-grid{grid-template-columns:1fr 1fr}.executive-chart-card:last-child{grid-column:1/-1} }
-@media(max-width:820px){ #calendarPage .calendar-kpis.executive-kpis{grid-template-columns:1fr 1fr}.executive-chart-grid,.executive-calendar-side{grid-template-columns:1fr}.executive-chart-card:last-child{grid-column:auto}#calendarPage .executive-filter-panel .calendar-filterbar{grid-template-columns:1fr 1fr}.calendar-filter-clear{width:100%}.executive-calendar-heading{align-items:flex-start}.executive-calendar-badge{display:none}.calendar-status-chart{grid-template-columns:1fr}.executive-calendar-heading h2{font-size:1.42rem} }
+@media(max-width:1180px){ #calendarPage .executive-filter-panel .calendar-filterbar{grid-template-columns:1.2fr 1fr 1fr 105px}.calendar-filter-actions{grid-column:1/-1;justify-self:end;width:172px}.executive-calendar-main{grid-template-columns:1fr}.executive-calendar-side{grid-template-columns:1fr 1fr;grid-template-rows:auto}.executive-chart-grid{grid-template-columns:1fr 1fr}.executive-chart-card:last-child{grid-column:1/-1} }
+@media(max-width:820px){ #calendarPage .calendar-kpis.executive-kpis{grid-template-columns:1fr 1fr}.executive-chart-grid,.executive-calendar-side{grid-template-columns:1fr}.executive-chart-card:last-child{grid-column:auto}#calendarPage .executive-filter-panel .calendar-filterbar{grid-template-columns:1fr 1fr}.calendar-filter-actions{grid-column:auto;justify-self:stretch;width:auto}.executive-calendar-heading{align-items:flex-start}.executive-calendar-badge{display:none}.calendar-status-chart{grid-template-columns:1fr}.executive-calendar-heading h2{font-size:1.42rem} }
 @media(max-width:540px){ #calendarPage .calendar-kpis.executive-kpis,#calendarPage .executive-filter-panel .calendar-filterbar{grid-template-columns:1fr}.executive-calendar-heading p{font-size:.68rem} }
 </style>
 </head>
@@ -8393,6 +8395,19 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
     <symbol id="i-clipboard" viewBox="0 0 24 24">
       <rect x="5" y="4" width="14" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/>
       <path d="M9 4.5V3h6v3H9V4.5ZM9 11h6M9 15h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-clipboard-plus" viewBox="0 0 24 24">
+      <rect x="4" y="4" width="14" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      <path d="M8 4V2.8h6V4M7.5 9h7M7.5 13h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      <circle cx="17.5" cy="16.5" r="4.1" fill="var(--icon-b)" stroke="currentColor" stroke-width="1.5"/>
+      <path d="M17.5 14.5v4M15.5 16.5h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-bus-clock" viewBox="0 0 24 24">
+      <path d="M4 7c0-2.2 1.8-4 4-4h6c2.2 0 4 1.8 4 4v7.5H4V7Z" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      <path d="M4 9h14M7 18H5.5A1.5 1.5 0 0 1 4 16.5v-2h11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      <circle cx="7" cy="17.5" r="1.5" fill="currentColor"/>
+      <circle cx="17.5" cy="17" r="4.2" fill="var(--icon-b)" stroke="currentColor" stroke-width="1.6"/>
+      <path d="M17.5 14.8v2.5l1.7 1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
     </symbol>
     <symbol id="i-target" viewBox="0 0 24 24">
       <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7"/>
@@ -8809,8 +8824,10 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
             <div class="calendar-filter-field"><label for="calendarAreaFilter">Área</label><select id="calendarAreaFilter" class="calendar-filter-select"><option value="">Todas as áreas</option></select></div>
             <div class="calendar-filter-field"><label for="calendarStatusFilter">Status</label><select id="calendarStatusFilter" class="calendar-filter-select"><option value="">Todos os status</option></select></div>
             <div class="calendar-filter-field calendar-year-field"><label for="calendarYear">Ano</label><select id="calendarYear" class="calendar-filter-select calendar-year-select"></select></div>
-            <button id="calendarToday" class="btn calendar-current-year" type="button" title="Voltar para o ano atual"><svg><use href="#i-calendar"/></svg></button>
-            <button id="calendarClearFilters" class="btn calendar-filter-clear" type="button"><svg><use href="#i-filter"/></svg>Limpar filtros</button>
+            <div class="calendar-filter-actions">
+              <button id="calendarToday" class="btn calendar-current-year" type="button" title="Voltar para o ano atual" aria-label="Voltar para o ano atual"><svg><use href="#i-calendar"/></svg></button>
+              <button id="calendarClearFilters" class="btn calendar-filter-clear" type="button"><svg><use href="#i-filter"/></svg>Limpar filtros</button>
+            </div>
           </div>
           <div id="calendarFilterSummary" class="calendar-filter-summary">Exibindo todos os projetos do ano selecionado.</div>
         </article>
@@ -9155,7 +9172,7 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
     const USERS_KEY = "cscUsersV1";
     const THEME_KEY = "cscThemeV1"; // mantido apenas por compatibilidade
     const APP_CACHE_VERSION_KEY = "cscAppCacheVersionV1";
-    const APP_CACHE_VERSION = "cache-2026-09-01-05";
+    const APP_CACHE_VERSION = "cache-2026-09-02-06";
 
     // Nova publicação => invalida somente os caches locais de dados.
     // A sessão autenticada permanece ativa e os dados são recarregados do backend.
@@ -11454,7 +11471,10 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
     }
 
     function projectVisualMeta(project) {
+      const nameKey = normalizeCalendarFilter(project?.name || "");
       const key = normalizeCalendarFilter(`${project?.name || ""} ${project?.description || ""} ${project?.area || ""}`);
+      if (/gestao de atendimentos extras/.test(nameKey)) return { icon: "i-clipboard-plus", tone: "tone-purple" };
+      if (/pontualidade byd/.test(nameKey)) return { icon: "i-bus-clock", tone: "tone-orange" };
       if (/roteir|rota|litoral|mapa|univale/.test(key)) return { icon: "i-route", tone: "tone-purple" };
       if (/manutenc|abastec|combust|o\.s|ordem de servico/.test(key)) return { icon: "i-wrench", tone: "tone-green" };
       if (/atendimento|chamado|suporte|fale/.test(key)) return { icon: "i-headset", tone: "tone-purple" };
