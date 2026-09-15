@@ -9173,7 +9173,7 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
     const USERS_KEY = "cscUsersV1";
     const THEME_KEY = "cscThemeV1"; // mantido apenas por compatibilidade
     const APP_CACHE_VERSION_KEY = "cscAppCacheVersionV1";
-    const APP_CACHE_VERSION = "cache-2026-09-02-07";
+    const APP_CACHE_VERSION = "cache-2026-09-15-03";
 
     // Nova publicação => invalida somente os caches locais de dados.
     // A sessão autenticada permanece ativa e os dados são recarregados do backend.
@@ -9400,14 +9400,25 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
       });
     }
 
+    function activityTimestamp(update) {
+      const numeric = Number(update?.sortTime);
+      if (Number.isFinite(numeric) && numeric > 0) return numeric;
+      const raw = String(update?.dateTime || "").trim();
+      const br = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+      if (br) {
+        const [, day, month, year, hour = "0", minute = "0", second = "0"] = br;
+        return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second)).getTime();
+      }
+      const direct = Date.parse(raw);
+      if (Number.isFinite(direct)) return direct;
+      const id = Number(update?.id);
+      return Number.isFinite(id) ? id : 0;
+    }
+
     function getAllProjectActivities() {
       return projects.flatMap(project =>
         (project.updates || []).map(update => ({ project, update }))
-      ).sort((a, b) => {
-        const aTime = Date.parse(a.update.dateTime) || Number(a.update.id) || 0;
-        const bTime = Date.parse(b.update.dateTime) || Number(b.update.id) || 0;
-        return bTime - aTime;
-      });
+      ).sort((a, b) => activityTimestamp(b.update) - activityTimestamp(a.update));
     }
 
     function getProjectReadCount(project, userName = currentUser.name) {
@@ -9427,6 +9438,12 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
         ? project.readUpdatesBy
         : {};
       project.readUpdatesBy[userName] = Array.isArray(project.updates) ? project.updates.length : 0;
+    }
+
+    function markAllProjectUpdatesAsRead(userName = currentUser.name) {
+      projects.forEach(project => markProjectUpdatesAsRead(project, userName));
+      persistProjects();
+      updateNotificationBadge();
     }
 
     function updateNotificationBadge() {
@@ -9455,9 +9472,11 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
 
     function addProjectHistory(project, entry) {
       project.updates = Array.isArray(project.updates) ? project.updates : [];
+      const now = Date.now();
       project.updates.push({
-        id: Date.now() + Math.random(),
+        id: now + Math.random(),
         dateTime: formatDateTimeNow(),
+        sortTime: now,
         actor: currentUser.name,
         ...entry
       });
@@ -10776,7 +10795,7 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
               <div class="history-entry-icon"><svg><use href="#${isProgress ? "i-notes" : ["structure_updated","deadline_changed","status_paused","status_changed"].includes(update.type) ? "i-settings" : "i-users"}"/></svg></div>
               <div>
                 <strong>${titles[update.type] || "Atualização do andamento"}</strong>
-                <time>${escapeHtml(update.dateTime || "Data não registrada")} ${update.actor ? `· <span class="history-actor">${escapeHtml(update.actor)}</span>` : ""}</time>
+                <time>${escapeHtml(update.dateTime || "Data não registrada")} ${update.actor ? `· <span class="history-actor">${escapeHtml(canonicalUserName(update.actor) || update.actor)}</span>` : ""}</time>
                 ${isProgress ? `
                   <div class="history-change">
                     <span class="change-chip">Status: ${escapeHtml(update.previousStatus)} → ${escapeHtml(update.status)}</span>
@@ -10790,7 +10809,7 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
                   <div class="history-change">
                     <span class="change-chip">${escapeHtml(update.previousOwner)} → ${escapeHtml(update.newOwner)}</span>
                   </div>` : ""}
-                ${update.note ? `<p>${escapeHtml(update.note)}</p>` : ""}
+                ${update.note ? `<p>${escapeHtml(canonicalizeHistoryText(update.note))}</p>` : ""}
                 ${requestActions}
               </div>
             </article>`;
@@ -11017,6 +11036,20 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
     const notificationModal = document.getElementById("notificationModal");
     const requestModal = document.getElementById("requestModal");
 
+    function canonicalizeHistoryText(value) {
+      let text = String(value || "");
+      users.forEach(user => {
+        const name = String(user?.name || "").trim();
+        if (!name) return;
+        const normalized = normalizeCalendarFilter(name);
+        const broken = normalized.replace(/[a-z0-9 ]/g, ch => ch).replace(/[^a-z0-9 ]/g, "?");
+        const rawParts = text.split(/(\s+)/);
+        text = rawParts.map(part => canonicalUserName(part) || part).join("");
+      });
+      text = text.replace(/Thais Ara\?jo/g, "Thais Araújo");
+      return text;
+    }
+
     function renderActivities() {
       const items = getAllProjectActivities();
       const list = document.getElementById("activityList");
@@ -11049,13 +11082,13 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
             </div>
             <div>
               <h3>${titles[update.type] || "Atualização do andamento"}</h3>
-              <small><span class="activity-project">${escapeHtml(project.name)}</span> · ${escapeHtml(update.dateTime || "Data não registrada")} ${update.actor ? `· ${escapeHtml(update.actor)}` : ""}</small>
+              <small><span class="activity-project">${escapeHtml(project.name)}</span> · ${escapeHtml(update.dateTime || "Data não registrada")} ${update.actor ? `· ${escapeHtml(canonicalUserName(update.actor) || update.actor)}` : ""}</small>
               ${isProgress ? `
                 <div class="activity-change">
                   <span class="change-chip">Status: ${escapeHtml(update.previousStatus)} → ${escapeHtml(update.status)}</span>
                   <span class="change-chip">Progresso: ${Number(update.previousProgress)}% → ${Number(update.progress)}%</span>
                 </div>` : ""}
-              ${update.note ? `<p>${escapeHtml(update.note)}</p>` : ""}
+              ${update.note ? `<p>${escapeHtml(canonicalizeHistoryText(update.note))}</p>` : ""}
             </div>
           </article>`;
       }).join("");
@@ -11120,9 +11153,21 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
       });
     }
 
-    document.getElementById("notificationButton").addEventListener("click", () => {
-      renderActivities();
+    document.getElementById("notificationButton").addEventListener("click", async () => {
       openDialog(notificationModal);
+      markAllProjectUpdatesAsRead();
+      renderActivities();
+
+      const session = readStoredSession();
+      if (!session?.token) return;
+      try {
+        await loadBackendProjects(session);
+        lastSyncAt = Date.now();
+        markAllProjectUpdatesAsRead();
+        renderActivities();
+      } catch (error) {
+        console.warn("Não foi possível atualizar o histórico agora:", error);
+      }
     });
 
     document.getElementById("requestButton").addEventListener("click", () => {
