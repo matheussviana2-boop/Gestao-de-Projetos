@@ -24,12 +24,12 @@ readonly_css = '''
     [data-page="Configurações"],
     #cadastrosPage,
     #settingsPage,
-    #notificationButton,
     #requestButton,
     #openNewProjectModal,
     #openUserModal,
     #currentUserSelect,
     #logoutButton,
+    #updateModal,
     .user-switcher,
     .profile-menu,
     [data-project-edit],
@@ -58,10 +58,28 @@ readonly_css = '''
 
     body.csc-director-mode .view-only-note { display:inline-flex !important; }
     body.csc-director-mode .nav-button.permission-readonly { opacity:1 !important; }
+
+    /* Na Diretoria a linha do projeto é informativa; só os botões internos são clicáveis. */
+    body.csc-director-mode .project-row { cursor:default !important; }
+    body.csc-director-mode .project-row:hover .project-name strong { color:inherit !important; }
+    body.csc-director-mode .notes-button,
+    body.csc-director-mode .project-link-button,
+    body.csc-director-mode #notificationButton { cursor:pointer !important; }
   </style>
 '''
 if 'id="csc-director-readonly"' not in s:
     s = s.replace('</head>', readonly_css + '\n</head>', 1)
+
+# Remove da cópia da Diretoria a indicação de que clicar na linha abre edição.
+s = s.replace('title="Clique para atualizar o andamento"', 'title=""')
+
+# Qualquer caminho do sistema principal que tente abrir a janela de atualização
+# é neutralizado somente na versão da Diretoria.
+update_modal_needle = '    function openUpdateModal(projectId) {\n'
+update_modal_guard = '    function openUpdateModal(projectId) {\n      if (document.body.classList.contains("csc-director-mode")) return;\n'
+if update_modal_needle not in s:
+    raise SystemExit('openUpdateModal não encontrado')
+s = s.replace(update_modal_needle, update_modal_guard, 1)
 
 # Bloqueio técnico: mesmo que algum botão de escrita reapareça no futuro, esta
 # página pública só consegue chamar leitura da Diretoria e health.
@@ -110,10 +128,17 @@ boot = f'''    // Boot Diretoria: sem login, somente leitura e uma única consul
         el.hidden = true;
         el.style.display = "none";
       }});
-      ["notificationButton", "requestButton", "logoutButton", "openNewProjectModal"].forEach(id => {{
+      ["requestButton", "logoutButton", "openNewProjectModal"].forEach(id => {{
         const el = document.getElementById(id);
         if (el) {{ el.hidden = true; el.style.display = "none"; }}
       }});
+
+      // Atualizações continuam disponíveis para acompanhamento da Diretoria.
+      const notificationButtonEl = document.getElementById("notificationButton");
+      if (notificationButtonEl) {{
+        notificationButtonEl.hidden = false;
+        notificationButtonEl.style.removeProperty("display");
+      }}
 
       // O endereço compartilhado pode ser apenas /diretoria/. A chave é aplicada
       // internamente pela página; o parâmetro ?k= continua aceito para compatibilidade.
@@ -128,6 +153,13 @@ boot = f'''    // Boot Diretoria: sem login, somente leitura e uma única consul
           serverTime: result.serverTime
         }});
         showPage("Visão Geral");
+
+        // Algumas rotinas do sistema principal podem recalcular visibilidade após o render.
+        // Reforçamos apenas o botão de Atualizações, que é leitura e deve permanecer acessível.
+        if (notificationButtonEl) {{
+          notificationButtonEl.hidden = false;
+          notificationButtonEl.style.removeProperty("display");
+        }}
       }} catch (error) {{
         console.error("Falha ao carregar painel da Diretoria:", error);
         projects = [];
