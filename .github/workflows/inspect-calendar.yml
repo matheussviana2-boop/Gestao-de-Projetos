@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - '.github/workflows/inspect-calendar.yml'
+      - '.github/scripts/patch_notifications.py'
 
 permissions:
   contents: write
