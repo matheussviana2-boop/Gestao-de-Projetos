@@ -9173,7 +9173,7 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
     const USERS_KEY = "cscUsersV1";
     const THEME_KEY = "cscThemeV1"; // mantido apenas por compatibilidade
     const APP_CACHE_VERSION_KEY = "cscAppCacheVersionV1";
-    const APP_CACHE_VERSION = "cache-2026-09-15-04";
+    const APP_CACHE_VERSION = "cache-2026-09-15-05";
 
     // Nova publicação => invalida somente os caches locais de dados.
     // A sessão autenticada permanece ativa e os dados são recarregados do backend.
@@ -12667,7 +12667,8 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
     }
 
     async function loadBackendProjects(session) {
-      const result = await apiRequest("listProjects", {}, session.token);
+      // Usa o snapshot completo para preservar projetos, atualizações, solicitações e usuários.
+      const result = await apiRequest("bootstrap", {}, session.token);
       return applyBootstrapData(result);
     }
 
