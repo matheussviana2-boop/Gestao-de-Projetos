@@ -1,45 +1,200 @@
-name: Validar painel Diretoria
+name: Sincronizar painel Diretoria
 
 on:
   push:
     paths:
+      - 'Gestao-de-Projetos.html'
       - '.github/workflows/fix-directoria-status.yml'
 
 permissions:
   contents: write
 
 jobs:
-  fix:
+  sync:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Corrigir referência do filtro de status
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('Diretoria.html')
-          s = p.read_text(encoding='utf-8')
-          s = s.replace('id="status"><option', 'id="statusFilter"><option')
-          s = s.replace('status.innerHTML=', 'statusFilter.innerHTML=')
-          s = s.replace('s=status.value', 's=statusFilter.value')
-          s = s.replace('[q,area,status].forEach', '[q,area,statusFilter].forEach')
-          p.write_text(s, encoding='utf-8')
-          PY
-      - name: Validar JavaScript
+
+      - name: Gerar Diretoria a partir do sistema principal
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
-          s=Path('Diretoria.html').read_text(encoding='utf-8')
-          code=re.search(r'<script>([\s\S]*?)</script>',s).group(1)
-          Path('/tmp/diretoria.js').write_text(code,encoding='utf-8')
+
+          src = Path('Gestao-de-Projetos.html')
+          out = Path('Diretoria.html')
+          s = src.read_text(encoding='utf-8')
+
+          # O painel da Diretoria é o próprio sistema principal, sem uma interface paralela.
+          s = s.replace('<title>CSC Gestão de Projetos</title>', '<title>CSC Gestão de Projetos · Diretoria</title>', 1)
+          if 'name="robots"' not in s:
+              s = s.replace('<meta name="viewport" content="width=device-width, initial-scale=1.0" />', '<meta name="viewport" content="width=device-width, initial-scale=1.0" />\n  <meta name="robots" content="noindex,nofollow,noarchive" />', 1)
+
+          readonly_css = r'''
+  <style id="csc-director-readonly">
+    /* Diretoria: mesma interface do sistema, limitada a Visão Geral e Calendário. */
+    #loginScreen,
+    .nav-button[data-section="Cadastros"],
+    .nav-button[data-section="Configurações"],
+    [data-page="Cadastros"],
+    [data-page="Configurações"],
+    #cadastrosPage,
+    #settingsPage,
+    #notificationButton,
+    #requestButton,
+    #openNewProjectModal,
+    #openUserModal,
+    #currentUserSelect,
+    #logoutButton,
+    .user-switcher,
+    .profile-menu,
+    .project-edit-action,
+    .project-delete-action,
+    [data-project-edit],
+    [data-project-delete],
+    [data-edit-project],
+    [data-delete-project] { display:none !important; }
+
+    body.auth-pending .app,
+    body.session-checking .app,
+    body.csc-director-mode .app {
+      display:grid !important;
+      visibility:visible !important;
+      opacity:1 !important;
+      pointer-events:auto !important;
+    }
+
+    body.csc-director-mode .view-only-note { display:inline-flex !important; }
+    body.csc-director-mode .sidebar .nav-button.permission-readonly { opacity:1 !important; }
+
+    .csc-director-badge {
+      display:inline-flex; align-items:center; gap:7px; min-height:32px; padding:0 11px;
+      border:1px solid rgba(41,155,111,.25); border-radius:10px;
+      color:#27875d; background:rgba(231,247,239,.78); font-size:.68rem; font-weight:850;
+      white-space:nowrap;
+    }
+    body:not([data-theme="light"]) .csc-director-badge {
+      color:#69d7a3; background:rgba(20,79,58,.32); border-color:rgba(72,195,139,.26);
+    }
+  </style>
+'''
+          s = s.replace('</head>', readonly_css + '\n</head>', 1)
+
+          # Bloqueio técnico adicional: esta cópia nunca envia ações autenticadas ou de escrita.
+          send_needle = '    async function sendApi(action, payload, token, timeoutMs) {\n'
+          send_guard = '''    async function sendApi(action, payload, token, timeoutMs) {\n      if (action !== "directorView" && action !== "health") {\n        throw new Error("Painel da Diretoria: acesso somente para visualização.");\n      }\n'''
+          if send_needle not in s:
+              raise SystemExit('sendApi não encontrado')
+          s = s.replace(send_needle, send_guard, 1)
+
+          # Troca somente o boot da autenticação. Todo o restante da interface/renderização é o original.
+          boot_pattern = re.compile(
+              r'    // Boot: com sessão válida a interface abre na hora com o cache local e o\n'
+              r'    // servidor é consultado em segundo plano\. Sem sessão, apenas aquece o backend\.\n'
+              r'    \(function boot\(\) \{[\s\S]*?\n    \}\)\(\);\n  </script>',
+              re.M
+          )
+          director_boot = r'''    // Boot Diretoria: sem login, somente leitura, uma consulta ao abrir a página.
+    (async function bootDirector() {
+      document.body.classList.add("csc-director-mode");
+      document.body.classList.remove("auth-pending", "session-checking");
+      loginScreen.hidden = true;
+
+      currentUser = {
+        id: "director-view",
+        name: "Diretoria",
+        email: "",
+        role: "Acompanhamento Executivo",
+        permission: "visualizador",
+        initials: "DI",
+        avatar: "a1",
+        isAdmin: false,
+        active: true
+      };
+
+      try {
+        renderCurrentUser();
+      } catch (_) {}
+
+      const sessionInfo = document.getElementById("sessionUserEmail");
+      if (sessionInfo) sessionInfo.textContent = "Diretoria · Somente leitura";
+
+      // Reforça visualmente que são apenas as duas telas liberadas.
+      document.querySelectorAll('.nav-button[data-section="Cadastros"], .nav-button[data-section="Configurações"], [data-page="Cadastros"], [data-page="Configurações"]').forEach(el => el.hidden = true);
+      ["notificationButton", "requestButton", "logoutButton", "openNewProjectModal"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.hidden = true;
+      });
+
+      const key = new URLSearchParams(window.location.search).get("k") || "";
+      if (!key) {
+        showToast("Link da Diretoria inválido ou incompleto.");
+        projects = [];
+        renderAreaOptions();
+        renderProjects();
+        showPage("Visão Geral");
+        return;
+      }
+
+      try {
+        const result = await apiRequest("directorView", { key }, "", 25000);
+        applyBootstrapData({
+          projects: Array.isArray(result.projects) ? result.projects : [],
+          updates: [],
+          requests: [],
+          serverTime: result.serverTime
+        });
+        showPage("Visão Geral");
+
+        // Identificação discreta, sem alterar a composição original do cabeçalho.
+        const topActions = document.querySelector('.topbar-actions, .header-actions, .top-actions');
+        if (topActions && !document.getElementById('cscDirectorBadge')) {
+          const badge = document.createElement('span');
+          badge.id = 'cscDirectorBadge';
+          badge.className = 'csc-director-badge';
+          badge.textContent = 'Somente leitura';
+          topActions.prepend(badge);
+        }
+      } catch (error) {
+        console.error("Falha ao carregar painel da Diretoria:", error);
+        projects = [];
+        renderAreaOptions();
+        renderProjects();
+        showPage("Visão Geral");
+        showToast(error?.message || "Não foi possível carregar os projetos.");
+      }
+    })();
+  </script>'''
+
+          s, count = boot_pattern.subn(director_boot, s, count=1)
+          if count != 1:
+              raise SystemExit('Boot principal não encontrado para conversão')
+
+          out.write_text(s, encoding='utf-8')
+          print(f'Diretoria.html gerado a partir do sistema principal: {len(s)} bytes')
           PY
-          node --check /tmp/diretoria.js
-      - name: Salvar correção
+
+      - name: Validar JavaScript da cópia
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s = Path('Diretoria.html').read_text(encoding='utf-8')
+          scripts = re.findall(r'<script[^>]*>([\s\S]*?)</script>', s)
+          for i, code in enumerate(scripts):
+              Path(f'/tmp/director-{i}.js').write_text(code, encoding='utf-8')
+          print(f'{len(scripts)} scripts extraídos')
+          PY
+          for f in /tmp/director-*.js; do node --check "$f"; done
+
+      - name: Salvar painel sincronizado
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add Diretoria.html
-          if git diff --cached --quiet; then exit 0; fi
-          git commit -m "Validar painel da Diretoria"
+          if git diff --cached --quiet; then
+            echo "Diretoria já está sincronizada"
+            exit 0
+          fi
+          git commit -m "Sincronizar Diretoria com interface principal"
           git push
