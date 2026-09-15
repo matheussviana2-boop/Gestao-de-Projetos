@@ -1,4 +1,4 @@
-name: Equalizar graficos laterais
+name: Corrigir atualizacoes e usuarios
 
 on:
   push:
@@ -13,97 +13,191 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Aplicar CSS
+      - name: Aplicar correcoes
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
+
           p = Path('Gestao-de-Projetos.html')
           s = p.read_text(encoding='utf-8')
-          marker = '/* Equalizacao graficos laterais */'
-          css = '''
-/* Equalizacao graficos laterais */
-@media (min-width:1181px) {
-  #ownerPieBody.pie-panel-body {
-    display:grid !important;
-    grid-template-columns:1fr !important;
-    grid-template-rows:repeat(2,minmax(0,1fr)) !important;
-    gap:0 !important;
-    align-content:stretch !important;
-  }
-  #ownerPieSection,
-  #statusPieSection {
-    min-height:0 !important;
-    height:100% !important;
-    box-sizing:border-box !important;
-    display:grid !important;
-    grid-template-columns:165px minmax(0,1fr) !important;
-    grid-template-rows:auto 1fr !important;
-    column-gap:16px !important;
-    row-gap:8px !important;
-    align-items:center !important;
-    align-content:center !important;
-    padding:16px 0 !important;
-  }
-  #ownerPieSection .pie-section-header,
-  #statusPieSection .pie-section-header {
-    grid-column:1 / -1 !important;
-    margin:0 !important;
-  }
-  #ownerPieSection .pie-chart-wrap-compact,
-  #statusPieSection .pie-chart-wrap-compact {
-    width:165px !important;
-    min-height:170px !important;
-    height:170px !important;
-    display:grid !important;
-    place-items:center !important;
-    justify-self:center !important;
-  }
-  #ownerPieChart,
-  #statusPieChart {
-    width:150px !important;
-    height:150px !important;
-    min-width:150px !important;
-    min-height:150px !important;
-    max-width:150px !important;
-    max-height:150px !important;
-    aspect-ratio:1 / 1 !important;
-  }
-  #ownerPieSection .pie-section-side,
-  #statusPieSection .pie-section-side {
-    width:100% !important;
-    max-width:none !important;
-    align-self:center !important;
-  }
-  #statusPieSection {
-    border-top:1px solid rgba(59,163,201,.18) !important;
-  }
-}
-body[data-theme="light"] #statusPieSection {
-  border-top-color:rgba(55,145,183,.20) !important;
-}
+
+          # 1) Nome canônico do responsável já no mapeamento do projeto.
+          s = s.replace(
+              '      const owner = project.responsavel || "Não informado";',
+              '      const owner = canonicalUserName(project.responsavel) || project.responsavel || "Não informado";'
+          )
+          s = s.replace(
+              '        members: normalizeMembers(project.participantes),',
+              '        members: normalizeMembers(project.participantes).map(name => canonicalUserName(name) || name).filter(name => name && !samePerson(name, owner)),'
+          )
+          s = s.replace(
+              '        creator: project.criadoPor || owner,',
+              '        creator: canonicalUserName(project.criadoPor) || project.criadoPor || owner,'
+          )
+
+          # 2) Histórico vindo do backend: guardar timestamp real e normalizar autor.
+          old_update = '''          id: item.id,
+          dateTime: item.criadoEm ? new Date(item.criadoEm).toLocaleString("pt-BR") : "",
+          actor: item.usuarioNome || "Sistema",
+          type: item.tipo || "update",'''
+          new_update = '''          id: item.id,
+          dateTime: item.criadoEm ? new Date(item.criadoEm).toLocaleString("pt-BR") : "",
+          sortTime: item.criadoEm ? new Date(item.criadoEm).getTime() : (Number(item.id) || 0),
+          actor: canonicalUserName(item.usuarioNome) || item.usuarioNome || "Sistema",
+          type: item.tipo || "update",'''
+          if old_update in s:
+              s = s.replace(old_update, new_update)
+
+          # 3) Entradas locais também recebem timestamp numérico confiável.
+          old_history = '''      project.updates.push({
+        id: Date.now() + Math.random(),
+        dateTime: formatDateTimeNow(),
+        actor: currentUser.name,
+        ...entry
+      });'''
+          new_history = '''      const now = Date.now();
+      project.updates.push({
+        id: now + Math.random(),
+        dateTime: formatDateTimeNow(),
+        sortTime: now,
+        actor: currentUser.name,
+        ...entry
+      });'''
+          if old_history in s:
+              s = s.replace(old_history, new_history)
+
+          # 4) Ordenação robusta de atualizações, inclusive dd/mm/yyyy.
+          old_all = '''    function getAllProjectActivities() {
+      return projects.flatMap(project =>
+        (project.updates || []).map(update => ({ project, update }))
+      ).sort((a, b) => {
+        const aTime = Date.parse(a.update.dateTime) || Number(a.update.id) || 0;
+        const bTime = Date.parse(b.update.dateTime) || Number(b.update.id) || 0;
+        return bTime - aTime;
+      });
+    }'''
+          new_all = '''    function activityTimestamp(update) {
+      const numeric = Number(update?.sortTime);
+      if (Number.isFinite(numeric) && numeric > 0) return numeric;
+
+      const raw = String(update?.dateTime || "").trim();
+      const br = raw.match(/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})(?:,?\\s+(\\d{1,2}):(\\d{2})(?::(\\d{2}))?)?/);
+      if (br) {
+        const [, day, month, year, hour = "0", minute = "0", second = "0"] = br;
+        return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second)).getTime();
+      }
+
+      const direct = Date.parse(raw);
+      if (Number.isFinite(direct)) return direct;
+      const id = Number(update?.id);
+      return Number.isFinite(id) ? id : 0;
+    }
+
+    function getAllProjectActivities() {
+      return projects.flatMap(project =>
+        (project.updates || []).map(update => ({ project, update }))
+      ).sort((a, b) => activityTimestamp(b.update) - activityTimestamp(a.update));
+    }'''
+          if old_all not in s:
+              raise SystemExit('getAllProjectActivities nao encontrado')
+          s = s.replace(old_all, new_all)
+
+          # 5) Marcar todas as atualizações como lidas ao abrir o painel.
+          marker = '''    function markProjectUpdatesAsRead(project, userName = currentUser.name) {
+      project.readUpdatesBy = project.readUpdatesBy && typeof project.readUpdatesBy === "object"
+        ? project.readUpdatesBy
+        : {};
+      project.readUpdatesBy[userName] = Array.isArray(project.updates) ? project.updates.length : 0;
+    }
 '''
-          if marker not in s:
-              pos = s.rfind('</style>')
-              if pos < 0:
-                  raise SystemExit('style final nao encontrado')
-              s = s[:pos] + css + '\n' + s[pos:]
-              p.write_text(s, encoding='utf-8')
+          helper = marker + '''
+    function markAllProjectUpdatesAsRead(userName = currentUser.name) {
+      projects.forEach(project => markProjectUpdatesAsRead(project, userName));
+      persistProjects();
+      updateNotificationBadge();
+    }
+'''
+          if 'function markAllProjectUpdatesAsRead' not in s:
+              if marker not in s:
+                  raise SystemExit('markProjectUpdatesAsRead nao encontrado')
+              s = s.replace(marker, helper)
+
+          # 6) Ao abrir notificações: abre na hora, zera contador, sincroniza backend e renderiza novamente.
+          old_click = '''    document.getElementById("notificationButton").addEventListener("click", () => {
+      renderActivities();
+      openDialog(notificationModal);
+    });'''
+          new_click = '''    document.getElementById("notificationButton").addEventListener("click", async () => {
+      openDialog(notificationModal);
+      markAllProjectUpdatesAsRead();
+      renderActivities();
+
+      const session = readStoredSession();
+      if (!session?.token) return;
+      try {
+        await loadBackendProjects(session);
+        lastSyncAt = Date.now();
+        markAllProjectUpdatesAsRead();
+        renderActivities();
+      } catch (error) {
+        console.warn("Não foi possível atualizar o histórico agora:", error);
+      }
+    });'''
+          if old_click not in s:
+              raise SystemExit('listener notificationButton nao encontrado')
+          s = s.replace(old_click, new_click)
+
+          # 7) No bootstrap, carregar usuários oficiais ANTES dos projetos.
+          start = s.find('    function applyBootstrapData(result) {')
+          if start < 0:
+              raise SystemExit('applyBootstrapData nao encontrado')
+          end = s.find('\n    async function loadBackendProjects', start)
+          if end < 0:
+              raise SystemExit('fim de applyBootstrapData nao encontrado')
+          block = s[start:end]
+          users_block = '''      if (Array.isArray(result.users) && currentUser?.isAdmin) {
+        const previousUsers = [...users];
+        users = result.users.map(mapApiUser);
+        if (!users.some(user => user.id === currentUser.id)) users.unshift(currentUser);
+        users = assignDistinctAvatarColors(users, previousUsers);
+        refreshUserSwitcher();
+        renderSystemUsers();
+      }
+'''
+          if users_block in block:
+              block = block.replace(users_block, '')
+              insert_at = block.find('\n', block.find('{')) + 1
+              block = block[:insert_at] + users_block + block[insert_at:]
+              s = s[:start] + block + s[end:]
+
+          # 8) Atualiza versão interna do cache para descartar dados locais anteriores.
+          s = re.sub(r'const APP_CACHE_VERSION = "[^"]+";', 'const APP_CACHE_VERSION = "cache-2026-09-15-01";', s)
+
+          p.write_text(s, encoding='utf-8')
           PY
+
       - name: Validar JavaScript
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
-          s=Path('Gestao-de-Projetos.html').read_text(encoding='utf-8')
-          for i,x in enumerate(re.findall(r'<script[^>]*>([\s\S]*?)</script>',s)):
-              Path('/tmp/s%d.js'%i).write_text(x,encoding='utf-8')
+          s = Path('Gestao-de-Projetos.html').read_text(encoding='utf-8')
+          scripts = re.findall(r'<script[^>]*>([\s\S]*?)</script>', s)
+          for i, code in enumerate(scripts):
+              Path(f'/tmp/csc-{i}.js').write_text(code, encoding='utf-8')
+          print(f'{len(scripts)} scripts extraidos')
           PY
-          for f in /tmp/s*.js; do node --check "$f"; done
-      - name: Salvar
+          for f in /tmp/csc-*.js; do node --check "$f"; done
+
+      - name: Salvar correcoes
         run: |
-          rm -f .github/workflows/equalize-pie-charts.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "Equalizar graficos de divisao de projetos"
+          git add Gestao-de-Projetos.html
+          if git diff --cached --quiet; then
+            echo "Nenhuma alteracao necessaria"
+            exit 0
+          fi
+          git commit -m "Corrigir atualizacoes, notificacoes e nomes de usuarios"
           git push
