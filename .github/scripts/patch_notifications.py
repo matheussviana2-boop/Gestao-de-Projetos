@@ -1,10 +1,10 @@
 from pathlib import Path
 import re
 
+# patch revision 2
 p = Path('Gestao-de-Projetos.html')
 s = p.read_text(encoding='utf-8')
 
-# Normaliza responsável, participantes e criador já no mapeamento da API.
 s = s.replace(
     '      const owner = project.responsavel || "Não informado";',
     '      const owner = canonicalUserName(project.responsavel) || project.responsavel || "Não informado";'
@@ -18,7 +18,6 @@ s = s.replace(
     '        creator: canonicalUserName(project.criadoPor) || project.criadoPor || owner,'
 )
 
-# Atualizações vindas do backend: timestamp confiável e autor canônico.
 old = '''          id: item.id,
           dateTime: item.criadoEm ? new Date(item.criadoEm).toLocaleString("pt-BR") : "",
           actor: item.usuarioNome || "Sistema",
@@ -31,7 +30,6 @@ new = '''          id: item.id,
 if old in s:
     s = s.replace(old, new)
 
-# Entradas locais também ganham timestamp numérico.
 old = '''      project.updates.push({
         id: Date.now() + Math.random(),
         dateTime: formatDateTimeNow(),
@@ -49,7 +47,6 @@ new = '''      const now = Date.now();
 if old in s:
     s = s.replace(old, new)
 
-# Ordenação robusta de datas em pt-BR.
 old = '''    function getAllProjectActivities() {
       return projects.flatMap(project =>
         (project.updates || []).map(update => ({ project, update }))
@@ -84,7 +81,6 @@ if old not in s and 'function activityTimestamp(update)' not in s:
 if old in s:
     s = s.replace(old, new)
 
-# Marca todas as atualizações como lidas ao abrir o painel.
 marker = '''    function markProjectUpdatesAsRead(project, userName = currentUser.name) {
       project.readUpdatesBy = project.readUpdatesBy && typeof project.readUpdatesBy === "object"
         ? project.readUpdatesBy
@@ -104,7 +100,6 @@ if 'function markAllProjectUpdatesAsRead' not in s:
         raise SystemExit('markProjectUpdatesAsRead não encontrado')
     s = s.replace(marker, helper)
 
-# Ao abrir notificações: abre, zera badge, sincroniza do backend e redesenha.
 old = '''    document.getElementById("notificationButton").addEventListener("click", () => {
       renderActivities();
       openDialog(notificationModal);
@@ -130,7 +125,6 @@ if old in s:
 elif 'markAllProjectUpdatesAsRead();\n      renderActivities();' not in s:
     raise SystemExit('listener notificationButton não encontrado')
 
-# Usuários oficiais precisam existir antes de mapear projetos, para corrigir nomes antigos.
 start = s.find('    function applyBootstrapData(result) {')
 end = s.find('\n    async function loadBackendProjects', start)
 if start < 0 or end < 0:
@@ -151,19 +145,10 @@ if users_block in block:
     block = block[:pos] + users_block + block[pos:]
     s = s[:start] + block + s[end:]
 
-# Corrige também nomes antigos dentro de textos de histórico na renderização.
 if 'function canonicalizeHistoryText(value)' not in s:
     anchor = '    function renderActivities() {'
     helper = '''    function canonicalizeHistoryText(value) {
       let text = String(value || "");
-      users.forEach(user => {
-        const name = String(user?.name || "").trim();
-        if (!name) return;
-        const normalized = normalizeCalendarFilter(name);
-        const broken = normalized.replace(/[a-z0-9 ]/g, ch => ch).replace(/[^a-z0-9 ]/g, "?");
-        const rawParts = text.split(/(\\s+)/);
-        text = rawParts.map(part => canonicalUserName(part) || part).join("");
-      });
       text = text.replace(/Thais Ara\\?jo/g, "Thais Araújo");
       return text;
     }
@@ -174,8 +159,6 @@ if 'function canonicalizeHistoryText(value)' not in s:
 
 s = s.replace('${escapeHtml(update.actor)}', '${escapeHtml(canonicalUserName(update.actor) || update.actor)}')
 s = s.replace('${escapeHtml(update.note)}</p>', '${escapeHtml(canonicalizeHistoryText(update.note))}</p>')
-
-# Força descarte dos caches locais antigos.
-s = re.sub(r'const APP_CACHE_VERSION = "[^"]+";', 'const APP_CACHE_VERSION = "cache-2026-09-15-03";', s)
+s = re.sub(r'const APP_CACHE_VERSION = "[^"]+";', 'const APP_CACHE_VERSION = "cache-2026-09-15-04";', s)
 
 p.write_text(s, encoding='utf-8')
