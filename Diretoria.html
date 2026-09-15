@@ -8258,12 +8258,12 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
     [data-page="Configurações"],
     #cadastrosPage,
     #settingsPage,
-    #notificationButton,
     #requestButton,
     #openNewProjectModal,
     #openUserModal,
     #currentUserSelect,
     #logoutButton,
+    #updateModal,
     .user-switcher,
     .profile-menu,
     [data-project-edit],
@@ -8292,6 +8292,13 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
 
     body.csc-director-mode .view-only-note { display:inline-flex !important; }
     body.csc-director-mode .nav-button.permission-readonly { opacity:1 !important; }
+
+    /* Na Diretoria a linha do projeto é informativa; só os botões internos são clicáveis. */
+    body.csc-director-mode .project-row { cursor:default !important; }
+    body.csc-director-mode .project-row:hover .project-name strong { color:inherit !important; }
+    body.csc-director-mode .notes-button,
+    body.csc-director-mode .project-link-button,
+    body.csc-director-mode #notificationButton { cursor:pointer !important; }
   </style>
 
 </head>
@@ -9687,7 +9694,7 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
       const visibleProjects = filtered.slice(pageStart, pageStart + PROJECTS_PER_PAGE);
 
       tableBody.innerHTML = visibleProjects.map(project => `
-        <tr class="project-row ${project.status === "Em atraso" ? "overdue-row" : ""}" data-id="${project.id}" title="Clique para atualizar o andamento">
+        <tr class="project-row ${project.status === "Em atraso" ? "overdue-row" : ""}" data-id="${project.id}" title="">
           <td>
             <div class="project-cell">
               ${projectIconMarkup(project, "project-icon")}
@@ -10665,6 +10672,7 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
     }
 
     function openUpdateModal(projectId) {
+      if (document.body.classList.contains("csc-director-mode")) return;
       const project = projects.find(item => String(item.id) === String(projectId));
       if (!project) return showToast("Projeto não encontrado.");
       activeProjectId = projectId;
@@ -12877,10 +12885,17 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
         el.hidden = true;
         el.style.display = "none";
       });
-      ["notificationButton", "requestButton", "logoutButton", "openNewProjectModal"].forEach(id => {
+      ["requestButton", "logoutButton", "openNewProjectModal"].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.hidden = true; el.style.display = "none"; }
       });
+
+      // Atualizações continuam disponíveis para acompanhamento da Diretoria.
+      const notificationButtonEl = document.getElementById("notificationButton");
+      if (notificationButtonEl) {
+        notificationButtonEl.hidden = false;
+        notificationButtonEl.style.removeProperty("display");
+      }
 
       // O endereço compartilhado pode ser apenas /diretoria/. A chave é aplicada
       // internamente pela página; o parâmetro ?k= continua aceito para compatibilidade.
@@ -12895,6 +12910,13 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
           serverTime: result.serverTime
         });
         showPage("Visão Geral");
+
+        // Algumas rotinas do sistema principal podem recalcular visibilidade após o render.
+        // Reforçamos apenas o botão de Atualizações, que é leitura e deve permanecer acessível.
+        if (notificationButtonEl) {
+          notificationButtonEl.hidden = false;
+          notificationButtonEl.style.removeProperty("display");
+        }
       } catch (error) {
         console.error("Falha ao carregar painel da Diretoria:", error);
         projects = [];
