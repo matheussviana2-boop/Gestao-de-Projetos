@@ -1,168 +1,35 @@
-name: Corrigir historico e notificacoes
+name: Aplicar correcoes frontend
+
 on:
   push:
     paths:
       - '.github/workflows/inspect-calendar.yml'
+
 permissions:
   contents: write
+
 jobs:
-  update-ui:
+  patch:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Corrigir historico e notificacoes
-        shell: bash
+      - name: Aplicar patch
+        run: python3 .github/scripts/patch_notifications.py
+      - name: Validar JavaScript
         run: |
-          python <<'PY'
+          python3 - <<'PY'
           from pathlib import Path
           import re
-
-          p = Path('Gestao-de-Projetos.html')
-          s = p.read_text(encoding='utf-8')
-
-          s = s.replace(
-            '      const owner = project.responsavel || "Não informado";',
-            '      const owner = canonicalUserName(project.responsavel) || project.responsavel || "Não informado";'
-          )
-          s = s.replace(
-            '        members: normalizeMembers(project.participantes),',
-            '        members: normalizeMembers(project.participantes).map(name => canonicalUserName(name) || name).filter(name => name && !samePerson(name, owner)),'
-          )
-          s = s.replace(
-            '        creator: project.criadoPor || owner,',
-            '        creator: canonicalUserName(project.criadoPor) || project.criadoPor || owner,'
-          )
-
-          old = '''          id: item.id,
-          dateTime: item.criadoEm ? new Date(item.criadoEm).toLocaleString("pt-BR") : "",
-          actor: item.usuarioNome || "Sistema",
-          type: item.tipo || "update",'''
-          new = '''          id: item.id,
-          dateTime: item.criadoEm ? new Date(item.criadoEm).toLocaleString("pt-BR") : "",
-          sortTime: item.criadoEm ? new Date(item.criadoEm).getTime() : (Number(item.id) || 0),
-          actor: canonicalUserName(item.usuarioNome) || item.usuarioNome || "Sistema",
-          type: item.tipo || "update",'''
-          if old in s:
-            s = s.replace(old, new)
-
-          old = '''    function getAllProjectActivities() {
-      return projects.flatMap(project =>
-        (project.updates || []).map(update => ({ project, update }))
-      ).sort((a, b) => {
-        const aTime = Date.parse(a.update.dateTime) || Number(a.update.id) || 0;
-        const bTime = Date.parse(b.update.dateTime) || Number(b.update.id) || 0;
-        return bTime - aTime;
-      });
-    }'''
-          new = '''    function activityTimestamp(update) {
-      const numeric = Number(update?.sortTime);
-      if (Number.isFinite(numeric) && numeric > 0) return numeric;
-      const raw = String(update?.dateTime || "").trim();
-      const br = raw.match(/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})(?:,?\\s+(\\d{1,2}):(\\d{2})(?::(\\d{2}))?)?/);
-      if (br) {
-        const [, day, month, year, hour = "0", minute = "0", second = "0"] = br;
-        return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second)).getTime();
-      }
-      const direct = Date.parse(raw);
-      if (Number.isFinite(direct)) return direct;
-      const id = Number(update?.id);
-      return Number.isFinite(id) ? id : 0;
-    }
-
-    function getAllProjectActivities() {
-      return projects.flatMap(project =>
-        (project.updates || []).map(update => ({ project, update }))
-      ).sort((a, b) => activityTimestamp(b.update) - activityTimestamp(a.update));
-    }'''
-          if old not in s:
-            raise SystemExit('getAllProjectActivities nao encontrado')
-          s = s.replace(old, new)
-
-          old = '''    function markProjectUpdatesAsRead(project, userName = currentUser.name) {
-      project.readUpdatesBy = project.readUpdatesBy && typeof project.readUpdatesBy === "object"
-        ? project.readUpdatesBy
-        : {};
-      project.readUpdatesBy[userName] = Array.isArray(project.updates) ? project.updates.length : 0;
-    }
-'''
-          if 'function markAllProjectUpdatesAsRead' not in s:
-            new = old + '''
-    function markAllProjectUpdatesAsRead(userName = currentUser.name) {
-      projects.forEach(project => markProjectUpdatesAsRead(project, userName));
-      persistProjects();
-      updateNotificationBadge();
-    }
-'''
-            if old not in s:
-              raise SystemExit('markProjectUpdatesAsRead nao encontrado')
-            s = s.replace(old, new)
-
-          old = '''    document.getElementById("notificationButton").addEventListener("click", () => {
-      renderActivities();
-      openDialog(notificationModal);
-    });'''
-          new = '''    document.getElementById("notificationButton").addEventListener("click", async () => {
-      openDialog(notificationModal);
-      markAllProjectUpdatesAsRead();
-      renderActivities();
-
-      const session = readStoredSession();
-      if (!session?.token) return;
-      try {
-        await loadBackendProjects(session);
-        lastSyncAt = Date.now();
-        markAllProjectUpdatesAsRead();
-        renderActivities();
-      } catch (error) {
-        console.warn("Não foi possível atualizar o histórico agora:", error);
-      }
-    });'''
-          if old not in s:
-            raise SystemExit('notificationButton listener nao encontrado')
-          s = s.replace(old, new)
-
-          start = s.find('    function applyBootstrapData(result) {')
-          end = s.find('\n    async function loadBackendProjects', start)
-          if start < 0 or end < 0:
-            raise SystemExit('applyBootstrapData nao encontrado')
-          block = s[start:end]
-          users_block = '''      if (Array.isArray(result.users) && currentUser?.isAdmin) {
-        const previousUsers = [...users];
-        users = result.users.map(mapApiUser);
-        if (!users.some(user => user.id === currentUser.id)) users.unshift(currentUser);
-        users = assignDistinctAvatarColors(users, previousUsers);
-        refreshUserSwitcher();
-        renderSystemUsers();
-      }
-'''
-          if users_block in block:
-            block = block.replace(users_block, '')
-            pos = block.find('\n') + 1
-            block = block[:pos] + users_block + block[pos:]
-            s = s[:start] + block + s[end:]
-
-          s = re.sub(r'const APP_CACHE_VERSION = "[^"]+";', 'const APP_CACHE_VERSION = "cache-2026-09-15-02";', s)
-          p.write_text(s, encoding='utf-8')
+          s = Path('Gestao-de-Projetos.html').read_text(encoding='utf-8')
+          for i, code in enumerate(re.findall(r'<script[^>]*>([\s\S]*?)</script>', s)):
+              Path(f'/tmp/csc-{i}.js').write_text(code, encoding='utf-8')
           PY
-      - name: Validar JavaScript
-        shell: bash
-        run: |
-          node <<'NODE'
-          const fs = require('fs');
-          const s = fs.readFileSync('Gestao-de-Projetos.html','utf8');
-          const blocks = [...s.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)].map(m => m[1]);
-          blocks.forEach((b,i) => {
-            const f = `/tmp/csc-${i}.js`;
-            fs.writeFileSync(f,b);
-            require('child_process').execFileSync('node',['--check',f],{stdio:'inherit'});
-          });
-          console.log(`JavaScript OK: ${blocks.length} blocos`);
-          NODE
+          for f in /tmp/csc-*.js; do node --check "$f"; done
       - name: Publicar
-        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add Gestao-de-Projetos.html
-          git commit -m "Corrigir historico de atualizacoes e notificacoes" || exit 0
+          git diff --cached --quiet && exit 0
+          git commit -m "Corrigir atualizacoes, notificacoes e nomes"
           git push
