@@ -15,7 +15,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Aplicar patch
-        run: python3 .github/scripts/patch_notifications.py
+        run: |
+          python3 .github/scripts/patch_notifications.py
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('Gestao-de-Projetos.html')
+          s = p.read_text(encoding='utf-8')
+          old = '''    async function loadBackendProjects(session) {
+      const result = await apiRequest("listProjects", {}, session.token);
+      return applyBootstrapData(result);
+    }'''
+          new = '''    async function loadBackendProjects(session) {
+      // O snapshot completo preserva projetos, histórico, solicitações e usuários.
+      const result = await apiRequest("bootstrap", {}, session.token);
+      return applyBootstrapData(result);
+    }'''
+          if old in s:
+              s = s.replace(old, new)
+          elif 'apiRequest("bootstrap", {}, session.token)' not in s[s.find('async function loadBackendProjects'):s.find('async function loadBackendProjects')+350]:
+              raise SystemExit('loadBackendProjects não encontrado no formato esperado')
+          s = re.sub(r'const APP_CACHE_VERSION = "[^"]+";', 'const APP_CACHE_VERSION = "cache-2026-09-15-05";', s)
+          p.write_text(s, encoding='utf-8')
+          PY
       - name: Validar JavaScript
         run: |
           python3 - <<'PY'
@@ -32,5 +54,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add Gestao-de-Projetos.html
           git diff --cached --quiet && exit 0
-          git commit -m "Corrigir atualizacoes, notificacoes e nomes"
+          git commit -m "Corrigir sincronizacao do historico e notificacoes"
           git push
