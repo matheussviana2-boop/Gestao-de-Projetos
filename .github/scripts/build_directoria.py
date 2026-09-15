@@ -146,6 +146,35 @@ boot = f'''    // Boot Diretoria: sem login, somente leitura e uma única consul
 
       try {{
         const result = await apiRequest("directorView", {{ key }}, "", 25000);
+
+        // Mantém na view as mesmas cores usadas no gráfico por responsável.
+        // Como a Diretoria não carrega a lista administrativa de usuários, montamos
+        // apenas um catálogo visual dos responsáveis a partir dos próprios projetos.
+        // A ordem é exatamente a mesma do gráfico: quantidade desc. + nome.
+        const directorOwnerCounts = new Map();
+        (Array.isArray(result.projects) ? result.projects : []).forEach(project => {{
+          const rawOwner = String(project?.responsavel || project?.owner || "Não informado").trim() || "Não informado";
+          const keyOwner = normalizeCalendarFilter(rawOwner);
+          const current = directorOwnerCounts.get(keyOwner) || {{ name: rawOwner, count: 0 }};
+          current.name = rawOwner;
+          current.count += 1;
+          directorOwnerCounts.set(keyOwner, current);
+        }});
+        const directorOwners = [...directorOwnerCounts.values()]
+          .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "pt-BR"));
+
+        users = directorOwners.map((item, index) => ({{
+          id: `director-owner-${{index + 1}}`,
+          name: item.name,
+          email: "",
+          role: "Responsável",
+          permission: "visualizador",
+          initials: initialsFromName(item.name),
+          avatar: `a${{(index % 8) + 1}}`,
+          isAdmin: false,
+          active: true
+        }}));
+
         applyBootstrapData({{
           projects: Array.isArray(result.projects) ? result.projects : [],
           updates: Array.isArray(result.updates) ? result.updates : [],
