@@ -7318,6 +7318,27 @@
       overflow-y: auto;
     }
 
+    .calendar-project-description + .calendar-project-description {
+      margin-top: -3px;
+    }
+
+    .calendar-date-popover .calendar-project-description {
+      white-space: pre-line;
+      max-height: 110px;
+    }
+
+    .project-detail-field textarea {
+      min-height: 68px;
+    }
+    .calendar-description-empty {
+      color: #8aa0ab;
+    }
+
+    .calendar-date-popover {
+      max-height: calc(100vh - 24px);
+      overflow-y: auto;
+    }
+
     .calendar-date-popover-row {
       display: flex;
       justify-content: space-between;
@@ -8815,9 +8836,19 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
                 </div>
               </div>
 
-              <div class="field full">
-                <label for="projectDescription">Descrição resumida</label>
-                <textarea id="projectDescription" placeholder="Descreva de forma breve o objetivo do projeto"></textarea>
+              <div class="field full project-detail-field">
+                <label for="projectObjective">Objetivo</label>
+                <textarea id="projectObjective" maxlength="2000" placeholder="O que o projeto vai entregar/resolver?"></textarea>
+              </div>
+
+              <div class="field full project-detail-field">
+                <label for="projectBenefits">Benefícios/Resultado esperado</label>
+                <textarea id="projectBenefits" maxlength="2000" placeholder="Qual indicador vai melhorar e quanto? (ex.: reduzir X de 10 para 2)"></textarea>
+              </div>
+
+              <div class="field full project-detail-field">
+                <label for="projectSavings">Economia</label>
+                <textarea id="projectSavings" maxlength="2000" placeholder="Valor estimado em R$ ou horas/mês economizadas"></textarea>
               </div>
 
               <div class="field full">
@@ -9082,11 +9113,6 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
           </div>
 
           <div class="field update-hidden-structural-field">
-            <label for="structuralDescription">Descrição</label>
-            <input id="structuralDescription" type="text" />
-          </div>
-
-          <div class="field update-hidden-structural-field">
             <label for="structuralStart">Data de início</label>
             <input id="structuralStart" type="date" />
           </div>
@@ -9220,6 +9246,63 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
   </div>
 
   <script>
+    /* ===== Detalhamento do projeto (substitui a antiga "Descrição resumida") ===== */
+    const PROJECT_DETAIL_FIELDS = [
+      { key: "objective", api: "objetivo", input: "projectObjective", label: "Objetivo" },
+      { key: "benefits", api: "beneficios", input: "projectBenefits", label: "Benefícios/Resultado esperado" },
+      { key: "savings", api: "economia", input: "projectSavings", label: "Economia" }
+    ];
+
+    /** Lê os três campos do projeto; projetos antigos usam a descrição como Objetivo. */
+    function projectDetails(project) {
+      const details = {};
+      PROJECT_DETAIL_FIELDS.forEach(field => { details[field.key] = String(project?.[field.key] ?? "").trim(); });
+      const hasAny = PROJECT_DETAIL_FIELDS.some(field => details[field.key]);
+      if (!hasAny && project?.description) details.objective = String(project.description).trim();
+      return details;
+    }
+
+    function composeProjectDescription(details) {
+      return PROJECT_DETAIL_FIELDS
+        .map(field => details?.[field.key] ? `${field.label}: ${details[field.key]}` : "")
+        .filter(Boolean)
+        .join("\n");
+    }
+
+    function projectDetailsPayload(details) {
+      const payload = {};
+      PROJECT_DETAIL_FIELDS.forEach(field => { payload[field.api] = details?.[field.key] || ""; });
+      return payload;
+    }
+
+    function mapApiProjectDetails(apiProject) {
+      const raw = {};
+      PROJECT_DETAIL_FIELDS.forEach(field => { raw[field.key] = String(apiProject?.[field.api] ?? "").trim(); });
+      const details = projectDetails({ ...raw, description: apiProject?.descricao || "" });
+      return { ...details, description: composeProjectDescription(details) || String(apiProject?.descricao || "") };
+    }
+
+    function readProjectDetailFields() {
+      const details = {};
+      PROJECT_DETAIL_FIELDS.forEach(field => {
+        details[field.key] = (document.getElementById(field.input)?.value || "").trim();
+      });
+      return details;
+    }
+
+    function fillProjectDetailFields(details) {
+      PROJECT_DETAIL_FIELDS.forEach(field => {
+        const input = document.getElementById(field.input);
+        if (input) input.value = details?.[field.key] || "";
+      });
+    }
+
+    function projectDetailsPopoverMarkup(project) {
+      const details = projectDetails(project || {});
+      return PROJECT_DETAIL_FIELDS.map(field => `
+            <div class="calendar-project-description"><span class="calendar-description-label">${escapeHtml(field.label)}</span>${details[field.key] ? escapeHtml(details[field.key]) : '<em class="calendar-description-empty">Não informado.</em>'}</div>`).join("");
+    }
+
     const CSC_API_URL = "https://script.google.com/macros/s/AKfycbxEnXC5h6vl_hANMS3lofEG8g87nqlUis-fiEXaAxCOZ90wmBZPxV0CDl6Kw5ttPAlTrQ/exec";
     const CSC_SESSION_KEY = "cscApiSessionV1";
     const STORAGE_KEY = "cscProjectsV2";
@@ -10377,7 +10460,6 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
           : "Responsável principal";
 
       document.getElementById("structuralArea").value = project.area || "CSC";
-      document.getElementById("structuralDescription").value = project.description || "";
       document.getElementById("structuralStart").value = brazilianDateToInput(project.start);
       const structuralEndInput = document.getElementById("structuralEnd");
       structuralEndInput.value = brazilianDateToInput(project.end);
@@ -10485,6 +10567,9 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
       project.name = mapped.name;
       project.area = mapped.area;
       project.description = mapped.description;
+      project.objective = mapped.objective;
+      project.benefits = mapped.benefits;
+      project.savings = mapped.savings;
       project.start = mapped.start;
       project.end = mapped.end;
       project.noDate = mapped.noDate;
@@ -10506,13 +10591,19 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
       }
 
       const newArea = document.getElementById("structuralArea").value;
-      const newDescription = document.getElementById("structuralDescription").value.trim();
       const startInput = document.getElementById("structuralStart").value;
       const endElement = document.getElementById("structuralEnd");
       const endInput = endElement.value;
       const originalEndInput = endElement.dataset.originalEnd || brazilianDateToInput(project.end);
       const deadlineChanged = endInput !== originalEndInput;
       const deadlineJustification = document.getElementById("updateReason").value.trim();
+
+      // Projeto futuro sem data: o campo de início fica oculto neste modal, então
+      // a atualização de andamento segue sem alterar datas (antes era bloqueada).
+      const projectWithoutDates = !parseBrazilianDate(project.start) && !parseBrazilianDate(project.end);
+      if (projectWithoutDates && !startInput && !endInput) {
+        return { ok: true, changed: false, deadlineChanged: false };
+      }
 
       if (!startInput || !endInput) {
         showValidation("Informe as datas de início e conclusão.");
@@ -10537,20 +10628,17 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
 
       const previous = {
         area: project.area,
-        description: project.description,
         start: project.start,
         end: project.end,
         status: project.status
       };
 
       const nextArea = newArea;
-      const nextDescription = newDescription;
       const nextStart = formatDateInput(startInput);
       const nextEnd = formatDateInput(endInput);
 
       const changes = [];
       if (previous.area !== nextArea) changes.push(`Área: ${previous.area} → ${nextArea}`);
-      if (previous.description !== nextDescription) changes.push("Descrição atualizada");
       if (previous.start !== nextStart) changes.push(`Início: ${previous.start} → ${nextStart}`);
       if (previous.end !== nextEnd) changes.push(`Prazo final: ${previous.end} → ${nextEnd}`);
 
@@ -10559,7 +10647,6 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
       }
 
       project.area = nextArea;
-      project.description = nextDescription;
       project.start = nextStart;
       project.end = nextEnd;
 
@@ -11057,7 +11144,7 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
           patch: {
             nome: project.name,
             area: project.area,
-            descricao: project.description,
+            ...projectDetailsPayload(projectDetails(project)),
             dataInicio: project.start,
             dataFim: project.end,
             status: project.status,
@@ -11911,7 +11998,7 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
         const width = hasDates ? Math.max(1.3, ((clippedEnd-clippedStart)/duration)*100) : 0;
         html += `
           <div class="gantt-cell gantt-row-id">${String(index+1).padStart(2,"0")}</div>
-          <div class="gantt-cell gantt-project" data-project-name="${escapeHtml(item.project.name)}" data-project-description="${escapeHtml(item.project.description || "Sem descrição cadastrada.")}" data-start-date="${escapeHtml(item.project.start || "Sem data definida")}" data-end-date="${escapeHtml(item.project.end || "Sem data definida")}" title="Clique para visualizar a descrição">
+          <div class="gantt-cell gantt-project" data-project-name="${escapeHtml(item.project.name)}" data-project-id="${escapeHtml(item.project.id)}" data-start-date="${escapeHtml(item.project.start || "Sem data definida")}" data-end-date="${escapeHtml(item.project.end || "Sem data definida")}" title="Clique para visualizar os detalhes">
             ${projectIconMarkup(item.project, "calendar-project-icon")}
             <div class="gantt-project-title">
               <strong title="${escapeHtml(item.project.name)}">${escapeHtml(item.project.name)}</strong>
@@ -11923,7 +12010,7 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
           </div>
           <div class="gantt-cell gantt-owner-cell" title="${escapeHtml(item.project.owner)}">${escapeHtml(item.project.owner)}</div>
           ${hasDates
-            ? `<div class="gantt-bar-layer"><div class="gantt-bar ${statusBarClass(item.project.status)}" style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%" data-project-name="${escapeHtml(item.project.name)}" data-project-description="${escapeHtml(item.project.description || "Sem descrição cadastrada.")}" data-start-date="${escapeHtml(item.project.start)}" data-end-date="${escapeHtml(item.project.end)}" title="${Math.max(0, Math.min(100, Number(item.project.progress) || 0))}% concluído · Clique para visualizar os detalhes"><span class="gantt-bar-label">${Math.max(0, Math.min(100, Number(item.project.progress) || 0))}%</span></div></div>`
+            ? `<div class="gantt-bar-layer"><div class="gantt-bar ${statusBarClass(item.project.status)}" style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%" data-project-name="${escapeHtml(item.project.name)}" data-project-id="${escapeHtml(item.project.id)}" data-start-date="${escapeHtml(item.project.start)}" data-end-date="${escapeHtml(item.project.end)}" title="${Math.max(0, Math.min(100, Number(item.project.progress) || 0))}% concluído · Clique para visualizar os detalhes"><span class="gantt-bar-label">${Math.max(0, Math.min(100, Number(item.project.progress) || 0))}%</span></div></div>`
             : `<div class="gantt-bar-layer no-date"><span class="gantt-no-date-label">SEM DATA DEFINIDA</span></div>`}`;
       });
       grid.innerHTML = html;
@@ -11934,14 +12021,15 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
           event.stopPropagation();
           const rect = target.getBoundingClientRect();
           const projectName = target.dataset.projectName || "Projeto";
-          const projectDescription = target.dataset.projectDescription || "Sem descrição cadastrada.";
+          const popoverProject = visible.find(item => String(item.project.id) === String(target.dataset.projectId))?.project
+            || projects.find(item => String(item.id) === String(target.dataset.projectId));
           const startDate = target.dataset.startDate || "—";
           const endDate = target.dataset.endDate || "—";
 
           popover.innerHTML = `
             <button type="button" class="calendar-popover-close" aria-label="Fechar detalhes" title="Fechar">×</button>
             <strong title="${escapeHtml(projectName)}">${escapeHtml(projectName)}</strong>
-            <div class="calendar-project-description"><span class="calendar-description-label">Descrição resumida</span>${escapeHtml(projectDescription)}</div>
+            ${projectDetailsPopoverMarkup(popoverProject)}
             <div class="calendar-date-popover-row"><span>Data inicial</span><span>${startDate}</span></div>
             <div class="calendar-date-popover-row"><span>Data final</span><span>${endDate}</span></div>
           `;
@@ -11956,8 +12044,11 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
           const popupWidth = Math.min(340, window.innerWidth - 24);
           let left = rect.left + rect.width / 2 - popupWidth / 2;
           left = Math.max(12, Math.min(left, window.innerWidth - popupWidth - 12));
+          // Usa a altura real do popover (agora com três blocos de detalhamento).
+          const popupHeight = popover.offsetHeight || 210;
           let top = rect.bottom + 10;
-          if (top + 210 > window.innerHeight) top = rect.top - 210;
+          if (top + popupHeight > window.innerHeight) top = rect.top - popupHeight - 10;
+          top = Math.min(top, window.innerHeight - popupHeight - 12);
 
           popover.style.left = `${left}px`;
           popover.style.top = `${Math.max(12, top)}px`;
@@ -12075,7 +12166,7 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
 
       if (editingProjectId !== null) {
         formTitle.textContent = "Editar cadastro do projeto";
-        if (formHelper) formHelper.textContent = "Atualize os dados cadastrais, a descrição e as datas principais do projeto.";
+        if (formHelper) formHelper.textContent = "Atualize os dados cadastrais, o detalhamento (objetivo, resultado esperado e economia) e as datas principais do projeto.";
         formBadge.textContent = "Edição cadastral";
         saveButton.innerHTML = '<svg><use href="#i-edit"/></svg>Salvar alterações cadastrais';
         clearButton.textContent = "Cancelar edição";
@@ -12092,7 +12183,7 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
       editingProjectId = null;
       document.getElementById("projectName").value = "";
       document.getElementById("projectOwner").value = currentUser.name;
-      document.getElementById("projectDescription").value = "";
+      fillProjectDetailFields({});
       document.getElementById("projectLink").value = "";
       document.getElementById("projectNoDate").checked = false;
       document.getElementById("projectStart").value = "";
@@ -12117,7 +12208,7 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
       document.getElementById("projectName").value = project.name || "";
       document.getElementById("projectArea").value = project.area || "Telemetria";
       document.getElementById("projectOwner").value = project.owner || currentUser.name;
-      document.getElementById("projectDescription").value = project.description || "";
+      fillProjectDetailFields(projectDetails(project));
       document.getElementById("projectLink").value = project.link || "";
       const projectHasNoDate = !parseBrazilianDate(project.start) || !parseBrazilianDate(project.end);
       document.getElementById("projectNoDate").checked = projectHasNoDate;
@@ -12310,7 +12401,8 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
 
       const name = document.getElementById("projectName").value.trim();
       const ownerInput = document.getElementById("projectOwner").value.trim();
-      const description = document.getElementById("projectDescription").value.trim();
+      const details = readProjectDetailFields();
+      const description = composeProjectDescription(details);
       const projectLink = document.getElementById("projectLink").value.trim();
       const noDate = document.getElementById("projectNoDate").checked;
       const start = document.getElementById("projectStart").value;
@@ -12349,7 +12441,7 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
           const patch = {
             nome: name,
             area: selectedArea,
-            descricao: description,
+            ...projectDetailsPayload(details),
             dataInicio: noDate ? "" : formatDateInput(start),
             dataFim: noDate ? "" : formatDateInput(end),
             semData: noDate,
@@ -12387,7 +12479,7 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
             if (index >= 0) projects[index] = mapped; else projects.unshift(mapped);
           } else {
             Object.assign(currentProject, {
-              name, area: selectedArea, description, start: noDate ? "" : formatDateInput(start), end: noDate ? "" : formatDateInput(end),
+              name, area: selectedArea, description, ...details, start: noDate ? "" : formatDateInput(start), end: noDate ? "" : formatDateInput(end),
               noDate, owner: ownerInput, initials: initialsFromName(ownerInput), status: noDate ? "Não iniciado" : nextStatus,
               progress, link: projectLink, orangeIcon: ["Pausado", "Em atraso"].includes(nextStatus)
             });
@@ -12412,7 +12504,7 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
         const payloadProject = {
           nome: name,
           area: selectedArea,
-          descricao: description,
+          ...projectDetailsPayload(details),
           dataInicio: noDate ? "" : formatDateInput(start),
           dataFim: noDate ? "" : formatDateInput(end),
           semData: noDate,
@@ -12653,7 +12745,7 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
         id: project.id,
         name: project.nome || "Projeto sem nome",
         area: project.area || "Outros",
-        description: project.descricao || "",
+        ...mapApiProjectDetails(project),
         start: apiDateToBr(project.dataInicio),
         end: apiDateToBr(project.dataFim),
         noDate: project.semData === true || project.semData === "true" || (!project.dataInicio && !project.dataFim),
