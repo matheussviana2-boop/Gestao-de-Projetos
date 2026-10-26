@@ -8610,7 +8610,6 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
       <header class="topbar">
         <div class="title-block">
           <h1 id="pageTitle">Fluxo <span class="accent">Visual</span> de Projetos</h1>
-          <p id="pageSubtitle">Visão estratégica do andamento dos projetos do setor CSC</p>
         </div>
 
         <div class="top-actions">
@@ -12186,24 +12185,19 @@ body:not([data-theme="light"]) .executive-chart-card .executive-card-title { bac
         "Configurações": document.getElementById("settingsPage")
       };
       const title = document.getElementById("pageTitle");
-      const subtitle = document.getElementById("pageSubtitle");
       Object.values(pages).forEach(page => page.classList.remove("active"));
       pages[section]?.classList.add("active");
 
       if (section === "Cadastros") {
         title.innerHTML = 'Cadastro de <span class="accent">Projetos</span>';
-        subtitle.textContent = "Inclua novos projetos na base operacional do setor CSC";
       } else if (section === "Calendário") {
         title.innerHTML = 'Calendário';
-        subtitle.textContent = "Visão estratégica do portfólio de projetos e entregas ao longo do ano";
         populateCalendarYears();
         renderCalendar();
       } else if (section === "Configurações") {
         title.innerHTML = '<span class="accent">Configurações</span> do Sistema';
-        subtitle.textContent = "Parâmetros, usuários e permissões do fluxo de projetos";
       } else {
         title.innerHTML = 'Fluxo <span class="accent">Visual</span> de Projetos';
-        subtitle.textContent = "Visão estratégica do andamento dos projetos do setor CSC";
       }
     }
 
